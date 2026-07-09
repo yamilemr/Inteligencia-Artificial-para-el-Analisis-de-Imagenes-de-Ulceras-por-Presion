@@ -1,13 +1,28 @@
-# Python-generated files
+# Entornos y credenciales
+.venv/
+.env
+.vscode/
+
+# Carpeta de experimentación
+sandbox/
+
+# Datos y modelos
+data/
+models/
+
+# Archivos generados por Python
 __pycache__/
-*.py[oc]
+*.py[cod]
+*$py.class
+*.egg-info
 build/
 dist/
 wheels/
-*.egg-info
 
-# Virtual environments
-.venv
+# Archivos generados por Jupyter Notebooks
+.ipynb_checkpoints/
+*.nbconvert.ipynb
 
-# Environment variables
-.env
+# Archivos temporales
+tmp/
+temp/

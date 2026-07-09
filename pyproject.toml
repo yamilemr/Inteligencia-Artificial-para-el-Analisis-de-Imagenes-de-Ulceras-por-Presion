@@ -1,9 +1,14 @@
 [project]
-name = "clasificacion-upp"
+name = "upp-classification"
 version = "0.1.0"
-description = "Add your description here"
+description = "Clasificación de imágenes de úlceras por presión mediante redes neuronales convolucionales"
 readme = "README.md"
 requires-python = ">=3.11"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Yamile Montecinos Rodríguez", email = "yamile.montecinos@uaem.edu.mx"}
+]
+
 dependencies = [
     "matplotlib>=3.11.0",
     "numpy>=2.4.6",
@@ -19,3 +24,7 @@ dependencies = [
 dev = [
     "ipykernel>=7.3.0",
 ]
+
+[build-system]
+requires = ["uv_build>=0.11.7,<0.12.0"]
+build-backend = "uv_build"
