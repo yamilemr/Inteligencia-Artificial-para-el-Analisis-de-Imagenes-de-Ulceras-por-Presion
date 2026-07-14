@@ -1,7 +1,7 @@
 import pandas as pd
 import tensorflow as tf
 from pathlib import Path
-from upp_classification.config import LABELS, IMAGE_SIZE
+from upp_classification.config import UPP_IMGS_DIR, UPP_CSV_FILE, PIID_IMGS_DIR, PIID_CSV_FILE, LABELS, IMAGE_SIZE
 
 
 def prepare_image(image_path, label, image_size=IMAGE_SIZE, preprocess_fn=None):
@@ -101,7 +101,9 @@ def create_dataset(images_dir, csv_file, split, batch_size=32, image_size=IMAGE_
     return dataset
 
 
-def get_dataset_splits(upp_imgs_dir, upp_csv_file, piid_imgs_dir=None, piid_csv_file=None, batch_size=32, image_size=IMAGE_SIZE, preprocess_fn=None):
+def get_dataset_splits(upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE, 
+                       piid_imgs_dir=PIID_IMGS_DIR, piid_csv_file=PIID_CSV_FILE, 
+                       batch_size=32, image_size=IMAGE_SIZE, preprocess_fn=None):
     """
     Carga y genera los conjuntos de datos de entrenamiento, validación y prueba.
 
@@ -109,9 +111,9 @@ def get_dataset_splits(upp_imgs_dir, upp_csv_file, piid_imgs_dir=None, piid_csv_
     - upp_imgs_dir (str o Path): Ruta de la carpeta que contiene las imágenes del dataset principal.
     - upp_csv_file (str): Ruta del archivo CSV que contiene los datos de las imágenes del dataset principal.
                           Debe contener las columnas 'filename', 'label' y 'split'.
-    - piid_imgs_dir (str o Path, opcional): Ruta de la carpeta que contiene las imágenes de PIID.
-    - piid_csv_file (str, opcional): Ruta del archivo CSV del dataset PIID.
-                                     Debe contener las columnas 'filename', 'label' y 'split'.
+    - piid_imgs_dir (str o Path): Ruta de la carpeta que contiene las imágenes de PIID.
+    - piid_csv_file (str): Ruta del archivo CSV del dataset PIID.
+                           Debe contener las columnas 'filename', 'label' y 'split'.
     - batch_size (int): Número de muestras procesadas por lote.
     - image_size (tuple): Tamaño para redimensionar las imágenes (alto, ancho).
     - preprocess_fn (callable, opcional): Función de preprocesamiento del modelo.
@@ -147,21 +149,20 @@ def get_dataset_splits(upp_imgs_dir, upp_csv_file, piid_imgs_dir=None, piid_csv_
         preprocess_fn=preprocess_fn
     )
 
-    # Si se proporcionan los datos de PIID, cargarlo y concatenarlo a test_ds
-    if piid_imgs_dir is not None and piid_csv_file is not None:
-        piid_test_ds = create_dataset(
-            images_dir=piid_imgs_dir,
-            csv_file=piid_csv_file,
-            split="test",
-            batch_size=batch_size,
-            image_size=image_size,
-            preprocess_fn=preprocess_fn
-        )
+    # Cargar los datos de PIID y concatenarlos a test_ds
+    piid_test_ds = create_dataset(
+        images_dir=piid_imgs_dir,
+        csv_file=piid_csv_file,
+        split="test",
+        batch_size=batch_size,
+        image_size=image_size,
+        preprocess_fn=preprocess_fn
+    )
 
-        # Desagrupar, concatenar y volver a agrupar para evitar lotes irregulares en medio
-        test_ds = (test_ds.unbatch()
-                   .concatenate(piid_test_ds.unbatch())
-                   .batch(batch_size)
-                   .prefetch(tf.data.AUTOTUNE))
+    # Desagrupar, concatenar y volver a agrupar para evitar lotes irregulares en medio
+    test_ds = (test_ds.unbatch()
+                .concatenate(piid_test_ds.unbatch())
+                .batch(batch_size)
+                .prefetch(tf.data.AUTOTUNE))
 
     return train_ds, val_ds, test_ds
