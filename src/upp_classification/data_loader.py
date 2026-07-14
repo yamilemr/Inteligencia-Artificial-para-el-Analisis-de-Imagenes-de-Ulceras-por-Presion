@@ -38,7 +38,7 @@ def prepare_image(image_path, label, image_size=IMAGE_SIZE, preprocess_fn=None):
     return image, label
 
 
-def create_dataset(images_dir, csv_file, split, batch_size=32, image_size=IMAGE_SIZE, preprocess_fn=None):
+def create_dataset(images_dir, csv_file, split, batch=True, batch_size=32, image_size=IMAGE_SIZE, preprocess_fn=None):
     """
     Crea un tf.data.Dataset para train, val o test.
 
@@ -47,6 +47,7 @@ def create_dataset(images_dir, csv_file, split, batch_size=32, image_size=IMAGE_
     - csv_file (str): Ruta del archivo CSV que contiene los datos de las imágenes. 
                       Debe contener las columnas 'filename', 'label' y 'split'.
     - split (str): Partición de los datos a cargar ('train', 'val' o 'test').
+    - batch (bool): Si es True, agrupa las muestras en lotes.
     - batch_size (int): Número de muestras procesadas por lote.
     - image_size (tuple): Tamaño para redimensionar las imágenes (alto, ancho).
     - preprocess_fn (callable, opcional): Función de preprocesamiento del modelo que se pasará a `prepare_image`.
@@ -92,8 +93,9 @@ def create_dataset(images_dir, csv_file, split, batch_size=32, image_size=IMAGE_
         num_parallel_calls=tf.data.AUTOTUNE # Hace que el proceso se ejecute en paralelo
     )
 
-    # Agrupar los datos en lotes del tamaño especificado
-    dataset = dataset.batch(batch_size)
+    # Agrupar los datos en lotes del tamaño especificado sólo si se solicita
+    if batch:
+        dataset = dataset.batch(batch_size)
 
     # Precargar el siguiente lote en memoria (CPU) mientras la GPU/CPU entrena el lote actual
     dataset = dataset.prefetch(tf.data.AUTOTUNE)
@@ -126,6 +128,7 @@ def get_dataset_splits(upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE,
         images_dir=upp_imgs_dir,
         csv_file=upp_csv_file,
         split="train",
+        batch=True,
         batch_size=batch_size,
         image_size=image_size,
         preprocess_fn=preprocess_fn
@@ -135,6 +138,7 @@ def get_dataset_splits(upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE,
         images_dir=upp_imgs_dir,
         csv_file=upp_csv_file,
         split="val",
+        batch=True,
         batch_size=batch_size,
         image_size=image_size,
         preprocess_fn=preprocess_fn
@@ -144,6 +148,7 @@ def get_dataset_splits(upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE,
         images_dir=upp_imgs_dir,
         csv_file=upp_csv_file,
         split="test",
+        batch=False,
         batch_size=batch_size,
         image_size=image_size,
         preprocess_fn=preprocess_fn
@@ -154,15 +159,18 @@ def get_dataset_splits(upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE,
         images_dir=piid_imgs_dir,
         csv_file=piid_csv_file,
         split="test",
+        batch=False,
         batch_size=batch_size,
         image_size=image_size,
         preprocess_fn=preprocess_fn
     )
 
-    # Desagrupar, concatenar y volver a agrupar para evitar lotes irregulares en medio
-    test_ds = (test_ds.unbatch()
-                .concatenate(piid_test_ds.unbatch())
-                .batch(batch_size)
-                .prefetch(tf.data.AUTOTUNE))
+    # Concatenar ambos datasets antes del batching para mantener lotes uniformes
+    test_ds = (
+        test_ds
+        .concatenate(piid_test_ds)
+        .batch(batch_size)
+        .prefetch(tf.data.AUTOTUNE)
+    )
 
     return train_ds, val_ds, test_ds
