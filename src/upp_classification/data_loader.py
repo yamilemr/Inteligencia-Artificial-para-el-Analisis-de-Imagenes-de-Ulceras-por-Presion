@@ -1,7 +1,7 @@
 import pandas as pd
 import tensorflow as tf
 from pathlib import Path
-from upp_classification.config import UPP_IMGS_DIR, UPP_CSV_FILE, PIID_IMGS_DIR, PIID_CSV_FILE, LABELS, IMAGE_SIZE
+from upp_classification.config import UPP_IMGS_DIR, UPP_CSV_FILE, PIID_IMGS_DIR, PIID_CSV_FILE, LABEL_MAP, IMAGE_SIZE
 
 
 def prepare_image(image_path, label, image_size=IMAGE_SIZE, preprocess_fn=None):
@@ -68,7 +68,7 @@ def create_dataset(images_dir, csv_file, split, batch=True, batch_size=32, image
     ]
 
     # Mapear las etiquetas de texto a valores enteros y guardarlas en un arreglo
-    df_split["label_map"] = df_split["label"].map(LABELS)
+    df_split["label_map"] = df_split["label"].map(LABEL_MAP)
     labels = df_split["label_map"].astype("int32").values
 
     # Crear el dataset inicial emparejando cada ruta de texto con su etiqueta

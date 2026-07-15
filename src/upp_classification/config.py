@@ -22,12 +22,24 @@ INPUT_SHAPE = (*IMAGE_SIZE, 3)
 # Hiperparámetros
 EPOCHS = 100
 
-# Etiquetas
-LABELS = {
-    "ps": 0,
-    "i": 1,
-    "ii": 2,
-    "iii": 3,
-    "iv": 4,
-    "nc": 5
+# Clases con sus identificadores y nombres descriptivos
+CLASS_LABELS  = {
+    "ps": {"id": 0,
+           "name": "Piel sana"},
+    "i": {"id": 1,
+          "name": "Estadio I"},
+    "ii": {"id": 2,
+           "name": "Estadio II"},
+    "iii": {"id": 3,
+            "name": "Estadio III"},
+    "iv": {"id": 4,
+           "name": "Estadio IV"},
+    "nc": {"id": 5,
+           "name": "No estadiable"}
 }
+
+# Diccionario para mapear de etiquetas de texto a índices numéricos
+LABEL_MAP = {key: value["id"] for key, value in CLASS_LABELS .items()}
+
+# Lista con los nombres descriptivos de las clases
+CLASS_NAMES = [value["name"] for value in CLASS_LABELS .values()]
