@@ -1,7 +1,7 @@
 import pandas as pd
 import tensorflow as tf
 from pathlib import Path
-from upp_classification.config import UPP_IMGS_DIR, UPP_CSV_FILE, PIID_IMGS_DIR, PIID_CSV_FILE, LABEL_MAP, IMAGE_SIZE
+from upp_classification.config import UPP_IMGS_DIR, UPP_CSV_FILE, PIID_IMGS_DIR, PIID_CSV_FILE, LABEL_MAP, IMAGE_SIZE, SEED
 
 
 def prepare_image(image_path, label, image_size=IMAGE_SIZE, preprocess_fn=None):
@@ -78,6 +78,7 @@ def create_dataset(images_dir, csv_file, split, batch=True, batch_size=32, image
     if split == "train":
         dataset = dataset.shuffle(
             buffer_size=len(df_split),
+            seed=SEED,
             reshuffle_each_iteration=True
         )
 

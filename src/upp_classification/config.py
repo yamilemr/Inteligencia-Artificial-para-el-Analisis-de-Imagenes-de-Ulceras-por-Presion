@@ -22,6 +22,9 @@ INPUT_SHAPE = (*IMAGE_SIZE, 3)
 # Hiperparámetros
 EPOCHS = 100
 
+# Semilla global para garantizar la reproducibilidad de las operaciones aleatorias
+SEED = 18
+
 # Clases con sus identificadores y nombres descriptivos
 CLASS_LABELS  = {
     "ps": {"id": 0,
@@ -43,3 +46,6 @@ LABEL_MAP = {key: value["id"] for key, value in CLASS_LABELS .items()}
 
 # Lista con los nombres descriptivos de las clases
 CLASS_NAMES = [value["name"] for value in CLASS_LABELS .values()]
+
+# Número de clases
+NUM_CLASSES = len(CLASS_LABELS)
