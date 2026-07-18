@@ -10,6 +10,9 @@ sandbox/
 data/
 models/
 
+# Artefactos generados por experimentación (MLflow y Optuna)
+experiments/
+
 # Archivos generados por Python
 __pycache__/
 *.py[cod]

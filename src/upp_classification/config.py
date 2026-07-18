@@ -15,6 +15,9 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 UPP_CSV_FILE = BASE_DIR / "data" / "labels_upp.csv"
 PIID_CSV_FILE = BASE_DIR / "data" / "labels_piid.csv"
 
+# Directorio donde se almacenan los estudios de Optuna
+OPTUNA_DIR = BASE_DIR / "experiments" / "optuna"
+
 # Configuración de las imágenes
 IMAGE_SIZE = (224, 224)
 INPUT_SHAPE = (*IMAGE_SIZE, 3)
