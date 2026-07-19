@@ -1,6 +1,8 @@
+import numpy as np
 import pandas as pd
 import tensorflow as tf
 from pathlib import Path
+from sklearn.utils.class_weight import compute_class_weight
 from upp_classification.config import UPP_IMGS_DIR, UPP_CSV_FILE, PIID_IMGS_DIR, PIID_CSV_FILE, LABEL_MAP, IMAGE_SIZE, SEED
 
 
@@ -175,3 +177,40 @@ def get_dataset_splits(upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE,
     )
 
     return train_ds, val_ds, test_ds
+
+
+def get_class_weights(csv_file=UPP_CSV_FILE):
+    """
+    Calcula los pesos balanceados de las clases utilizando las etiquetas del conjunto
+    de entrenamiento definido en el CSV.
+
+    Parámetros:
+    - csv_file (str o Path): Ruta del archivo CSV que contiene los datos de las imágenes 
+                            del dataset. Debe contener las columnas 'label' y 'split'.
+
+    Returns:
+    - class_weights (dict): Diccionario con el peso asociado a cada clase.
+    """
+    # Leer el CSV
+    df = pd.read_csv(csv_file)
+
+    # Seleccionar sólo las muestras de entrenamiento
+    df_train = df[df["split"] == "train"]
+
+    # Convertir etiquetas de texto a enteros
+    y_train = df_train["label"].map(LABEL_MAP).values
+
+    # Obtener las clases únicas en el dataset
+    classes = np.unique(y_train)
+
+    # Calcular los pesos balanceados para cada clase
+    weights = compute_class_weight(
+        class_weight="balanced", # Asigna mayor peso a las clases menos frecuentes
+        classes=classes, 
+        y=y_train
+    )
+
+    # Crear diccionario {clase: peso}
+    class_weights = {int(k): float(v) for k, v in zip(classes, weights)}
+
+    return class_weights

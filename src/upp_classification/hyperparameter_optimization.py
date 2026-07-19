@@ -1,9 +1,12 @@
+import mlflow
 import optuna
 import tensorflow as tf
 from tensorflow.keras import layers, models
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from optuna_integration.tfkeras import TFKerasPruningCallback
-from upp_classification.data_loader import get_dataset_splits
+from upp_classification.data_loader import get_dataset_splits, get_class_weights
+from upp_classification.mlflow_tracking import generate_run_name, log_params_to_mlflow, MLflowMetricsCallback, log_metrics_to_mlflow
+from upp_classification.model_evaluation import get_predictions, calculate_metrics
 from upp_classification.config import INPUT_SHAPE, NUM_CLASSES, EPOCHS, SEED, OPTUNA_DIR
 
 
@@ -158,7 +161,7 @@ def build_model(params, base_model_fn):
     return model
 
 
-def train_and_evaluate(trial, params, base_model_fn, preprocess_fn):
+def train_and_evaluate(trial, params, base_model_fn, preprocess_fn, class_weights):
     """
     Carga los datos, construye el modelo, realiza el entrenamiento y devuelve
     la mejor pérdida de validación obtenida.
@@ -171,6 +174,8 @@ def train_and_evaluate(trial, params, base_model_fn, preprocess_fn):
                                 (ej. tensorflow.keras.applications.ConvNeXtTiny)
     - preprocess_fn (callable): Función de preprocesamiento asociada al modelo base.
                                 (ej. convnext.preprocess_input)
+    - class_weights (dict): Diccionario con los pesos balanceados de cada clase, calculados a partir 
+                            del conjunto de entrenamiento.
 
     Returns:
     - best_val_loss (float): Menor valor de val_loss obtenido durante el entrenamiento.
@@ -183,6 +188,12 @@ def train_and_evaluate(trial, params, base_model_fn, preprocess_fn):
     
     # Construir modelo con los hiperparámetros seleccionados
     model = build_model(params=params, base_model_fn=base_model_fn)
+
+    # Callback para detener trials poco prometedores durante la optimización
+    pruning_callback = TFKerasPruningCallback(
+        trial=trial,
+        monitor="val_loss"
+    )
     
     # Callback para detener el entrenamiento cuando el modelo deje de mejorar
     early_stopping = EarlyStopping(
@@ -198,12 +209,6 @@ def train_and_evaluate(trial, params, base_model_fn, preprocess_fn):
         patience=4, # Espera 4 épocas sin mejoras antes de reducir
         min_lr=1e-7 # Learning rate mínimo permitida
     )
-
-    # Callback para que Optuna detenga anticipadamente los trials poco prometedores
-    pruning_callback = TFKerasPruningCallback(
-        trial=trial,
-        monitor="val_loss"
-    )
     
     # Entrenar el modelo
     history = model.fit(
@@ -211,16 +216,27 @@ def train_and_evaluate(trial, params, base_model_fn, preprocess_fn):
         validation_data=val_ds,
         epochs=EPOCHS,
         shuffle=False, # El shuffle ya se realiza al cargar los datos con tf.data.Dataset
-        callbacks=[early_stopping, reduce_lr, pruning_callback]
+        class_weight=class_weights, # Da mayor peso a las clases minoritarias durante el cálculo de la pérdida
+        callbacks=[MLflowMetricsCallback(), pruning_callback, early_stopping, reduce_lr]
     )
-    
-    # Retornar el menor error de validación
+        
+    # Evaluar el modelo en el conjunto de entrenamiento
+    y_true_train, y_pred_train, _ = get_predictions(model=model, dataset=train_ds)
+    cm_train, metrics_train = calculate_metrics(y_true=y_true_train, y_pred=y_pred_train)
+    log_metrics_to_mlflow(cm=cm_train, metrics=metrics_train, dataset_name="train")
+
+    # Evaluar el modelo en el conjunto de validación
+    y_true_val, y_pred_val, _ = get_predictions(model=model, dataset=val_ds)
+    cm_val, metrics_val = calculate_metrics(y_true=y_true_val, y_pred=y_pred_val)
+    log_metrics_to_mlflow(cm=cm_val, metrics=metrics_val, dataset_name="val")
+
+    # Obtener la menor pérdida de validación alcanzada durante el entrenamiento
     best_val_loss = min(history.history["val_loss"])
 
     return best_val_loss
 
 
-def objective(trial, base_model_fn, preprocess_fn):
+def objective(trial, base_model_fn, preprocess_fn, class_weights):
     """
     Función objetivo utilizada por Optuna para evaluar una configuración
     concreta de hiperparámetros.
@@ -232,6 +248,8 @@ def objective(trial, base_model_fn, preprocess_fn):
                                 (ej. tensorflow.keras.applications.ConvNeXtTiny)
     - preprocess_fn (callable): Función de preprocesamiento asociada al modelo base.
                                 (ej. convnext.preprocess_input)
+    - class_weights (dict): Diccionario con los pesos balanceados de cada clase, calculados a partir 
+                            del conjunto de entrenamiento.
 
     Returns:
     - val_loss (float): Métrica objetivo que Optuna intenta minimizar.
@@ -239,13 +257,41 @@ def objective(trial, base_model_fn, preprocess_fn):
     # Obtener hiperparámetros sugeridos por Optuna
     params = suggest_hyperparameters(trial=trial)
 
-    # Entrenar y evaluar la configuración actual
-    val_loss = train_and_evaluate(trial=trial, params=params, base_model_fn=base_model_fn, preprocess_fn=preprocess_fn)
-    
-    return val_loss
+    # Generar el nombre del run de MLflow
+    model_name = base_model_fn.__name__
+    run_name = generate_run_name(architecture_name=model_name, params=params)
+
+    # Crear un run de MLflow asociado al trial actual de Optuna
+    with mlflow.start_run(run_name=run_name):
+        # Registrar información adicional del run
+        mlflow.set_tag("architecture", model_name)
+        mlflow.set_tag("optuna_trial", trial.number)
+
+        # Registrar hiperparámetros en MLflow
+        log_params_to_mlflow(params)
+
+        try:
+            # Entrenar y evaluar la configuración actual
+            val_loss = train_and_evaluate(
+                trial=trial, 
+                params=params, 
+                base_model_fn=base_model_fn, 
+                preprocess_fn=preprocess_fn,
+                class_weights=class_weights
+            )
+
+            # Registrar métrica objetivo de Optuna
+            mlflow.log_metric(key="best_val_loss", value=val_loss)
+        
+            return val_loss
+
+        except optuna.TrialPruned:
+            # Marcar el run de MLflow como trial descartado por pruning
+            mlflow.set_tag("status", "pruned")
+            raise
 
 
-def run_hyperparameter_search(base_model_fn, preprocess_fn, model_name="model", n_trials=20):
+def run_hyperparameter_search(base_model_fn, preprocess_fn, n_trials=0, optuna_dir=OPTUNA_DIR):
     """
     Ejecuta la búsqueda de hiperparámetros utilizando Optuna.
 
@@ -254,8 +300,8 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, model_name="model", 
                                 (ej. tensorflow.keras.applications.ConvNeXtTiny)
     - preprocess_fn (callable): Función de preprocesamiento asociada al modelo base.
                                 (ej. convnext.preprocess_input)
-    - model_name (str): Nombre del modelo utilizado. Se emplea para nombrar el estudio de Optuna.
     - n_trials (int): Número de configuraciones de hiperparámetros que serán evaluadas.
+    - optuna_dir (str o Path): Directorio donde se almacenará la base de datos SQLite del estudio de Optuna.
 
     Returns:
     - study (optuna.study.Study): Objeto Study de Optuna con los resultados completos de la optimización.
@@ -265,19 +311,30 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, model_name="model", 
                                   - best_trial: mejor trial.
                                   - trials: historial completo de pruebas.
     """
+    # Nombre de la arquitectura utilizada
+    model_name = base_model_fn.__name__
+
+    # Obtener los pesos balanceados de las clases
+    class_weights = get_class_weights()
+
     # Crear el estudio de Optuna
     study = optuna.create_study(
         direction="minimize",
         study_name=f"optimization_{model_name}",
         sampler=optuna.samplers.TPESampler(seed=SEED),
-        storage=f"sqlite:///{OPTUNA_DIR / f'{model_name}.db'}",
+        storage=f"sqlite:///{optuna_dir / f'{model_name}.db'}",
         load_if_exists=True
     )
 
     # Ejecutar la búsqueda de hiperparámetros
     study.optimize(
         lambda trial:
-            objective(trial=trial, base_model_fn=base_model_fn, preprocess_fn=preprocess_fn),
+            objective(
+                trial=trial, 
+                base_model_fn=base_model_fn, 
+                preprocess_fn=preprocess_fn,
+                class_weights=class_weights
+            ),
         n_trials=n_trials
     )
 
