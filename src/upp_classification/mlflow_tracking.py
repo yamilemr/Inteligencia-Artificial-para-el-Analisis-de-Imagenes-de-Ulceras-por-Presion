@@ -1,28 +1,38 @@
 import mlflow
 import pandas as pd
 from tensorflow.keras.callbacks import Callback
-from upp_classification.config import MLFLOW_TRACKING_URI
+from upp_classification.config import MLFLOW_TRACKING_URI, MLFLOW_ARTIFACTS_DIR
 
 
-def setup_mlflow(experiment_name, tracking_uri=MLFLOW_TRACKING_URI):
+def setup_mlflow(experiment_name, tracking_uri=MLFLOW_TRACKING_URI, artifacts_dir=MLFLOW_ARTIFACTS_DIR):
     """
     Configura el servidor de tracking y el experimento activo de MLflow.
 
     Parámetros:
-    - experiment_name (str): Nombre del experimento en el que se registrarán
-                             los runs de entrenamiento.
-    - tracking_uri (str): URI del backend de tracking utilizado por MLflow
-                          para almacenar los experimentos.
+    - experiment_name (str): Nombre del experimento en el que se registrarán los runs de entrenamiento.
+    - tracking_uri (str): URI del backend de tracking utilizado por MLflow para almacenar los experimentos.
+    - artifacts_dir (str o Path): Directorio donde se almacenarán los artefactos asociados a los runs.
 
     Returns:
     - None: La función configura el experimento activo de MLflow.
     """
-    # Configurar el backend de tracking utilizado por MLflow para almacenar
-    # la información de los experimentos (runs, parámetros, métricas y artefactos)
+    # Configurar el backend de tracking utilizado por MLflow para almacenar la información de los
+    # experimentos (runs, parámetros, métricas y tags)
     mlflow.set_tracking_uri(uri=tracking_uri)
 
-    # Crear el experimento si no existe y establecerlo como experimento activo
-    # Todos los runs iniciados posteriormente se registrarán en este experimento
+    # Comprobar si el experimento ya existe
+    experiment = mlflow.get_experiment_by_name(name=experiment_name)
+
+    # Si el experimento no existe, crearlo especificando la ubicación donde se almacenarán los 
+    # artefactos generados por los runs del experimento
+    if experiment is None:
+        mlflow.create_experiment(
+            name=experiment_name,
+            artifact_location=artifacts_dir.resolve().as_uri()
+        )
+
+    # Establecer el experimento como activo para que todos los runs iniciados
+    # posteriormente se registren en él
     mlflow.set_experiment(experiment_name=experiment_name)
 
 
@@ -158,7 +168,7 @@ def log_metrics_to_mlflow(cm, metrics, dataset_name="train"):
     - None: La función registra las métricas globales y la matriz de confusión dentro del run activo de MLflow.
     """
     # Registrar las métricas en el run activo de MLflow
-    metrics_mlflow = {f"{dataset_name}_{key}": value for key, value in metrics.items()}
+    metrics_mlflow = {f"{key}_{dataset_name}": value for key, value in metrics.items()}
     mlflow.log_metrics(metrics=metrics_mlflow)
 
     # Convertir la matriz de confusión a un DataFrame

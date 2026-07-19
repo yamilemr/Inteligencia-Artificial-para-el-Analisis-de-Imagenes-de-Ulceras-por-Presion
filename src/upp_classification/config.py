@@ -18,6 +18,9 @@ PIID_CSV_FILE = BASE_DIR / "data" / "labels_piid.csv"
 # Directorio donde se almacenan los estudios de Optuna
 OPTUNA_DIR = BASE_DIR / "experiments" / "optuna"
 
+# Directorio donde se almacenan los artefactos de MLflow
+MLFLOW_ARTIFACTS_DIR = BASE_DIR / "experiments" / "mlflow_artifacts"
+
 # Base de datos SQLite utilizada por MLflow para almacenar los experimentos, runs, parámetros y métricas
 MLFLOW_TRACKING_URI = f"sqlite:///{BASE_DIR / 'experiments' / 'mlflow_tracking.db'}"
 
