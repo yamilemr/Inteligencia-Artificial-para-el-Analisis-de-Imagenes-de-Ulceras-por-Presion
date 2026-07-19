@@ -18,6 +18,9 @@ PIID_CSV_FILE = BASE_DIR / "data" / "labels_piid.csv"
 # Directorio donde se almacenan los estudios de Optuna
 OPTUNA_DIR = BASE_DIR / "experiments" / "optuna"
 
+# Base de datos SQLite utilizada por MLflow para almacenar los experimentos, runs, parámetros y métricas
+MLFLOW_TRACKING_URI = f"sqlite:///{BASE_DIR / 'experiments' / 'mlflow_tracking.db'}"
+
 # Configuración de las imágenes
 IMAGE_SIZE = (224, 224)
 INPUT_SHAPE = (*IMAGE_SIZE, 3)
