@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, precision_recall_fscore_support
-from upp_classification.mlflow_tracking import log_metrics_to_mlflow
+from upp_classification.mlflow_tracking import log_metrics_to_mlflow, log_class_metrics_to_mlflow
 
 
 def get_predictions(model, dataset):
@@ -156,18 +156,19 @@ def evaluate_model_datasets(model, train_ds=None, val_ds=None, test_ds=None, ret
             "metrics": metrics
         })
 
-        # Agregar métricas por clase si está indicado
+        # Calcular las métricas por clase si está indicado
         if include_class_metrics:
-            dataset_results["class_metrics"] = calculate_class_metrics(
-                y_true=y_true,
-                y_pred=y_pred
-            )
+            class_metrics = calculate_class_metrics(y_true=y_true, y_pred=y_pred)
+            dataset_results["class_metrics"] = class_metrics
 
         # Guardar resultados del dataset
         results[ds_name] = dataset_results
         
-        # Registrar la matriz de confusión y las métricas globales en MLflow si está indicado
+        # Registrar las métricas de evaluación en MLflow si está indicado
         if use_mlflow:
             log_metrics_to_mlflow(cm=cm, metrics=metrics, dataset_name=ds_name)
+
+            if include_class_metrics:
+                log_class_metrics_to_mlflow(class_metrics=class_metrics, dataset_name=ds_name)
 
     return results

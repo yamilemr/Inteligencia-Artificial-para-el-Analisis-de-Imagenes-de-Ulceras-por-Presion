@@ -2,8 +2,8 @@ import mlflow
 import pandas as pd
 import matplotlib.pyplot as plt
 from tensorflow.keras.callbacks import Callback
-from upp_classification.visualization import plot_confusion_matrix
-from upp_classification.config import MLFLOW_TRACKING_URI, MLFLOW_ARTIFACTS_DIR
+from upp_classification.visualization import plot_confusion_matrix, plot_class_metrics
+from upp_classification.config import MLFLOW_TRACKING_URI, MLFLOW_ARTIFACTS_DIR, CLASS_LABELS
 
 
 def setup_mlflow(experiment_name, tracking_uri=MLFLOW_TRACKING_URI, artifacts_dir=MLFLOW_ARTIFACTS_DIR):
@@ -191,4 +191,34 @@ def log_metrics_to_mlflow(cm, metrics, dataset_name):
     # Registrar la matriz de confusión como imagen (también contiene las métricas)
     fig = plot_confusion_matrix(cm=cm, metrics=metrics, title=f"{dataset_name}")
     mlflow.log_figure(figure=fig, artifact_file=f"confusion_matrix/{dataset_name}.png")
+    plt.close(fig)
+
+
+def log_class_metrics_to_mlflow(class_metrics, dataset_name):
+    """
+    Registra en MLflow las métricas por clase, también se registra una figura que 
+    contiene una tabla con estas métricas.
+
+    Args:
+    - class_metrics (dict): Diccionario con precision, recall y f1 por clase.
+    - dataset_name (str): Nombre del conjunto de datos evaluado ("train", "val" o "test").
+
+    Returns:
+    - None: La función registra las métricas por clase dentro del run activo de MLflow.
+    """
+    # Etiquetas en el mismo orden que sus identificadores
+    class_labels = list(CLASS_LABELS.keys())
+
+    # Registrar las métricas por clase
+    class_metrics_mlflow = {}
+    for idx, label in enumerate(class_labels):
+        class_metrics_mlflow[f"precision_{label}_{dataset_name}"] = float(class_metrics["precision"][idx])
+        class_metrics_mlflow[f"recall_{label}_{dataset_name}"] = float(class_metrics["recall"][idx])
+        class_metrics_mlflow[f"f1_{label}_{dataset_name}"] = float(class_metrics["f1"][idx])
+
+    mlflow.log_metrics(class_metrics_mlflow)
+
+    # Registrar una imagen que contiene una tabla con las métricas por clase
+    fig = plot_class_metrics(class_metrics=class_metrics, title=dataset_name)
+    mlflow.log_figure(figure=fig, artifact_file=f"class_metrics/{dataset_name}.png")
     plt.close(fig)
