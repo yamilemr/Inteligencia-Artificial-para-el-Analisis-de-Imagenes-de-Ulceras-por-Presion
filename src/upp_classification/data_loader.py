@@ -11,15 +11,18 @@ def prepare_image(image_path, label, image_size=IMAGE_SIZE, preprocess_fn=None):
     Lee una imagen JPEG, la redimensiona y aplica el preprocess_input correspondiente al 
     modelo de transfer learning.
 
-    Parámetros:
+    Args:
     - image_path (tf.Tensor): Ruta absoluta o relativa de la imagen (como tensor de cadena).
     - label (tf.Tensor): Etiqueta entera correspondiente a la imagen.
-    - image_size (tuple): Tamaño para redimensionar la imagen (alto, ancho).
-    - preprocess_fn (callable, opcional): Función de preprocesamiento específica del modelo de Keras.
+    - image_size (tuple, optional): Tamaño para redimensionar la imagen (alto, ancho).
+                                    Por defecto es IMAGE_SIZE.
+    - preprocess_fn (callable, optional): Función de preprocesamiento específica del modelo 
+                                          de Keras. Por defecto es None.
 
     Returns:
-    - image (tf.Tensor): El tensor de la imagen procesada de tipo tf.float32.
-    - label (tf.Tensor): El tensor de la etiqueta.
+    - tuple: Una tupla que contiene:
+             - image (tf.Tensor): El tensor de la imagen procesada de tipo tf.float32.
+             - label (tf.Tensor): El tensor de la etiqueta.
     """
     # Leer los bytes del archivo desde la ruta
     image = tf.io.read_file(image_path)
@@ -44,18 +47,19 @@ def create_dataset(images_dir, csv_file, split, batch=True, batch_size=32, image
     """
     Crea un tf.data.Dataset para train, val o test.
 
-    Parámetros:
+    Args:
     - images_dir (str o Path): Ruta de la carpeta en la que se encuentran las imágenes.
     - csv_file (str): Ruta del archivo CSV que contiene los datos de las imágenes. 
                       Debe contener las columnas 'filename', 'label' y 'split'.
     - split (str): Partición de los datos a cargar ('train', 'val' o 'test').
-    - batch (bool): Si es True, agrupa las muestras en lotes.
-    - batch_size (int): Número de muestras procesadas por lote.
-    - image_size (tuple): Tamaño para redimensionar las imágenes (alto, ancho).
-    - preprocess_fn (callable, opcional): Función de preprocesamiento del modelo que se pasará a `prepare_image`.
+    - batch (bool, optional): Si es True, agrupa las muestras en lotes. Por defecto es True.
+    - batch_size (int, optional): Número de muestras procesadas por lote. Por defecto es 32.
+    - image_size (tuple, optional): Tamaño para redimensionar las imágenes (alto, ancho). Por defecto es IMAGE_SIZE.
+    - preprocess_fn (callable, optional): Función de preprocesamiento del modelo que se pasará a `prepare_image`.
+                                          Por defecto es None.
 
     Returns:
-    - dataset (tf.data.Dataset): Conjunto de datos de TensorFlow preprocesado, agrupado en lotes.
+    - tf.data.Dataset: Conjunto de datos de TensorFlow preprocesado, agrupado en lotes.
     """
     images_dir = Path(images_dir)
 
@@ -112,19 +116,26 @@ def get_dataset_splits(upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE,
     """
     Carga y genera los conjuntos de datos de entrenamiento, validación y prueba.
 
-    Parámetros:
-    - upp_imgs_dir (str o Path): Ruta de la carpeta que contiene las imágenes del dataset principal.
-    - upp_csv_file (str): Ruta del archivo CSV que contiene los datos de las imágenes del dataset principal.
-                          Debe contener las columnas 'filename', 'label' y 'split'.
-    - piid_imgs_dir (str o Path): Ruta de la carpeta que contiene las imágenes de PIID.
-    - piid_csv_file (str): Ruta del archivo CSV del dataset PIID.
-                           Debe contener las columnas 'filename', 'label' y 'split'.
-    - batch_size (int): Número de muestras procesadas por lote.
-    - image_size (tuple): Tamaño para redimensionar las imágenes (alto, ancho).
-    - preprocess_fn (callable, opcional): Función de preprocesamiento del modelo.
+    Args:
+    - upp_imgs_dir (str o Path, optional): Ruta de la carpeta que contiene las imágenes del dataset principal.
+                                           Por defecto es UPP_IMGS_DIR.
+    - upp_csv_file (str, optional): Ruta del archivo CSV que contiene los datos de las imágenes del dataset
+                                    principal. Debe contener las columnas 'filename', 'label' y 'split'.
+                                    Por defecto es UPP_CSV_FILE.
+    - piid_imgs_dir (str o Path, optional): Ruta de la carpeta que contiene las imágenes de PIID.
+                                            Por defecto es PIID_IMGS_DIR.
+    - piid_csv_file (str, optional): Ruta del archivo CSV que contiene los datos de las imágenes del dataset 
+                                     PIID. Debe contener las columnas 'filename', 'label' y 'split'. 
+                                     Por defecto es PIID_CSV_FILE.
+    - batch_size (int, optional): Número de muestras procesadas por lote. Por defecto es 32.
+    - image_size (tuple, optional): Tamaño para redimensionar las imágenes (alto, ancho). Por defecto es IMAGE_SIZE
+    - preprocess_fn (callable, opcional, optional): Función de preprocesamiento del modelo. Por defecto es None.
 
     Returns:
-    - tuple: Una tupla con los tres conjuntos de datos (train_ds, val_ds, test_ds).
+    - tuple: Una tupla que contiene:
+             - train_ds (tf.data.Dataset): Conjunto de datos de entrenamiento.
+             - val_ds (tf.data.Dataset): Conjunto de datos de validación.
+             - test_ds (tf.data.Dataset): Conjunto de datos de prueba.
     """
     # Cargar el dataset principal
     train_ds = create_dataset(
@@ -184,12 +195,13 @@ def get_class_weights(csv_file=UPP_CSV_FILE):
     Calcula los pesos balanceados de las clases utilizando las etiquetas del conjunto
     de entrenamiento definido en el CSV.
 
-    Parámetros:
-    - csv_file (str o Path): Ruta del archivo CSV que contiene los datos de las imágenes 
-                            del dataset. Debe contener las columnas 'label' y 'split'.
+    Args:
+    - csv_file (str o Path, optional): Ruta del archivo CSV que contiene los datos de las imágenes 
+                                       del dataset. Debe contener las columnas 'label' y 'split'.
+                                       Por defecto es UPP_CSV_FILE.
 
     Returns:
-    - class_weights (dict): Diccionario con el peso asociado a cada clase.
+    - dict: Diccionario con el peso asociado a cada clase.
     """
     # Leer el CSV
     df = pd.read_csv(csv_file)

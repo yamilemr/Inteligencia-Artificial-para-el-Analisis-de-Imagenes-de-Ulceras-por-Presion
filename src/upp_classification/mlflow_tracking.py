@@ -1,6 +1,8 @@
 import mlflow
 import pandas as pd
+import matplotlib.pyplot as plt
 from tensorflow.keras.callbacks import Callback
+from upp_classification.visualization import plot_confusion_matrix
 from upp_classification.config import MLFLOW_TRACKING_URI, MLFLOW_ARTIFACTS_DIR
 
 
@@ -8,10 +10,12 @@ def setup_mlflow(experiment_name, tracking_uri=MLFLOW_TRACKING_URI, artifacts_di
     """
     Configura el servidor de tracking y el experimento activo de MLflow.
 
-    Parámetros:
+    Args:
     - experiment_name (str): Nombre del experimento en el que se registrarán los runs de entrenamiento.
-    - tracking_uri (str): URI del backend de tracking utilizado por MLflow para almacenar los experimentos.
-    - artifacts_dir (str o Path): Directorio donde se almacenarán los artefactos asociados a los runs.
+    - tracking_uri (str, optional): URI del backend de tracking utilizado por MLflow para almacenar los
+                                    experimentos. Por defecto es MLFLOW_TRACKING_URI.
+    - artifacts_dir (str o Path, optional): Directorio donde se almacenarán los artefactos asociados a
+                                            los runs. Por defecto es MLFLOW_ARTIFACTS_DIR.
 
     Returns:
     - None: La función configura el experimento activo de MLflow.
@@ -31,8 +35,7 @@ def setup_mlflow(experiment_name, tracking_uri=MLFLOW_TRACKING_URI, artifacts_di
             artifact_location=artifacts_dir.resolve().as_uri()
         )
 
-    # Establecer el experimento como activo para que todos los runs iniciados
-    # posteriormente se registren en él
+    # Establecer el experimento como activo para que todos los runs iniciados después se registren ahí
     mlflow.set_experiment(experiment_name=experiment_name)
 
 
@@ -46,12 +49,22 @@ def generate_run_name(architecture_name, params):
     ConvNeXtTiny | dl:2, du1:32, du2:64, dr:0.2, opt:AdamW, lr:1e-4, wd:1e-6, bs:32
     ConvNeXtTiny | dl:2, du1:32, du2:64, dr:0.2, opt:SGD, lr:1e-3, mom:0.8, nest:T, bs:32
 
-    Parámetros:
+    Args:
     - architecture_name (str): Nombre de la arquitectura utilizada (ej. ConvNeXtTiny).
     - params (dict): Diccionario con los hiperparámetros seleccionados para el entrenamiento.
+                     Debe contener:
+                     - dense_layers (int): Número de capas densas.
+                     - dense_units (list[int]): Número de neuronas por capa densa.
+                     - dropout_rate (float): Tasa de dropout aplicada antes de la capa de salida.
+                     - optimizer (str): Optimizador.
+                     - learning_rate (float): Tasa de aprendizaje del optimizador.
+                     - weight_decay (float): Decaimiento de pesos para AdamW.
+                     - momentum (float): Momentum para SGD.
+                     - nesterov (bool): Indica si se usa momentum de Nesterov en SGD.
+                     - batch_size (int): Tamaño de batch.
 
     Returns:
-    - run_name (str): Nombre descriptivo del run para su registro en MLflow.
+    - str: Nombre descriptivo del run para su registro en MLflow.
     """
     hyperparams = []
     
@@ -96,7 +109,7 @@ def log_params_to_mlflow(params):
     """
     Registra en MLflow los hiperparámetros utilizados durante el entrenamiento.
 
-    Parámetros:
+    Args:
     - params (dict): Diccionario con los hiperparámetros del modelo.
 
     Returns:
@@ -137,10 +150,10 @@ class MLflowMetricsCallback(Callback):
         """
         Registra en MLflow las métricas correspondientes a la época actual.
 
-        Parámetros:
+        Args:
         - epoch (int): Índice de la época finalizada.
-        - logs (dict, opcional): Diccionario con las métricas calculadas por 
-                                 Keras durante la época.
+        - logs (dict, optional): Diccionario con las métricas calculadas por 
+                                 Keras durante la época. Por defecto es None.
 
         Returns:
         - None: La función registra las métricas de la época en MLflow.
@@ -155,11 +168,11 @@ class MLflowMetricsCallback(Callback):
         mlflow.log_metrics(metrics=metrics, step=epoch)
 
 
-def log_metrics_to_mlflow(cm, metrics, dataset_name="train"):
+def log_metrics_to_mlflow(cm, metrics, dataset_name):
     """
     Registra en MLflow las métricas de evaluación y la matriz de confusión de un conjunto de datos.
 
-    Parámetros:
+    Args:
     - cm (np.ndarray): Matriz de confusión.
     - metrics (dict): Diccionario con las métricas globales (accuracy, precision, recall y F1-score).
     - dataset_name (str): Nombre del conjunto de datos evaluado ("train", "val" o "test").
@@ -167,12 +180,15 @@ def log_metrics_to_mlflow(cm, metrics, dataset_name="train"):
     Returns:
     - None: La función registra las métricas globales y la matriz de confusión dentro del run activo de MLflow.
     """
-    # Registrar las métricas en el run activo de MLflow
+    # Registrar las métricas de evaluación
     metrics_mlflow = {f"{key}_{dataset_name}": value for key, value in metrics.items()}
     mlflow.log_metrics(metrics=metrics_mlflow)
 
-    # Convertir la matriz de confusión a un DataFrame
+    # Registrar la matriz de confusión como tabla
     cm_df = pd.DataFrame(cm)
-
-    # Registrar la matriz de confusión como un artefacto del run
     mlflow.log_table(data=cm_df, artifact_file=f"confusion_matrix/{dataset_name}.json")
+
+    # Registrar la matriz de confusión como imagen (también contiene las métricas)
+    fig = plot_confusion_matrix(cm=cm, metrics=metrics, title=f"{dataset_name}")
+    mlflow.log_figure(figure=fig, artifact_file=f"confusion_matrix/{dataset_name}.png")
+    plt.close(fig)
