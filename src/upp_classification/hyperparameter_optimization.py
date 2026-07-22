@@ -177,12 +177,21 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, n_trials=60, optuna_
     # Obtener los pesos balanceados de las clases
     class_weights = get_class_weights()
 
+    # Configurar pruner para detener trials con bajo rendimiento
+    pruner = optuna.pruners.MedianPruner(
+        n_startup_trials=10, # Trials iniciales que se ejecutan completos antes de comenzar a aplicar pruning
+        n_warmup_steps=10, # Número de épocas iniciales de cada trial durante las que no se evalúa pruning
+        interval_steps=1, # Frecuencia (en épocas) con la que se revisa si un trial debe ser detenido
+        n_min_trials=3 # Número mínimo de trials que deben alcanzar una época para poder evaluar el pruning
+    )
+
     # Crear el estudio de Optuna
     study = optuna.create_study(
         direction="minimize",
         study_name=f"optimization_{model_name}",
         sampler=optuna.samplers.TPESampler(seed=SEED),
         storage=f"sqlite:///{optuna_dir / f'{model_name}.db'}",
+        pruner=pruner,
         load_if_exists=True
     )
 
