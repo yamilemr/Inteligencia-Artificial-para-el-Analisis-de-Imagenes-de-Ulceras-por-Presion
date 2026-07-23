@@ -20,6 +20,7 @@ from tensorflow.keras.applications.convnext import preprocess_input as convnextt
 
 from upp_classification.mlflow_tracking import setup_mlflow
 from upp_classification.hyperparameter_optimization import run_hyperparameter_search
+from upp_classification.config import AVAILABLE_MODELS, SEARCH_SPACES
 
 
 # Diccionario que relaciona el nombre de la arquitectura con su función constructora
@@ -47,7 +48,7 @@ def parse_args():
     parser.add_argument(
         "--model",
         required=True,
-        choices=MODELS.keys(),
+        choices=AVAILABLE_MODELS,
         help="Arquitectura de transfer learning."
     )
 
@@ -91,6 +92,7 @@ def main():
     study = run_hyperparameter_search(
         base_model_fn=base_model_fn,
         preprocess_fn=preprocess_fn,
+        search_space=SEARCH_SPACES[args.model],
         n_trials=args.trials,
     )
 
