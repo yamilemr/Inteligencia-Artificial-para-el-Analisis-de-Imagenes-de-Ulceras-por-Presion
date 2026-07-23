@@ -47,7 +47,6 @@ def generate_run_name(architecture_name, params):
     El nombre sigue el formato:
     ConvNeXtTiny | dl:2, du1:32, du2:64, dr:0.2, opt:Adam, lr:1e-4, bs:32
     ConvNeXtTiny | dl:2, du1:32, du2:64, dr:0.2, opt:AdamW, lr:1e-4, wd:1e-6, bs:32
-    ConvNeXtTiny | dl:2, du1:32, du2:64, dr:0.2, opt:SGD, lr:1e-3, mom:0.8, nest:T, bs:32
 
     Args:
     - architecture_name (str): Nombre de la arquitectura utilizada (ej. ConvNeXtTiny).
@@ -55,12 +54,12 @@ def generate_run_name(architecture_name, params):
                      Debe contener:
                      - dense_layers (int): Número de capas densas.
                      - dense_units (list[int]): Número de neuronas por capa densa.
-                     - dropout_rate (float): Tasa de dropout aplicada antes de la capa de salida.
+                     - dropout_rate (float): Tasa de dropout aplicada después de cada capa densa
+                                             o directamente después del GlobalAveragePooling2D si
+                                             no existen capas densas.
                      - optimizer (str): Optimizador.
                      - learning_rate (float): Tasa de aprendizaje del optimizador.
-                     - weight_decay (float): Decaimiento de pesos para AdamW.
-                     - momentum (float): Momentum para SGD.
-                     - nesterov (bool): Indica si se usa momentum de Nesterov en SGD.
+                     - weight_decay (float): Decaimiento de pesos (sólo para AdamW).
                      - batch_size (int): Tamaño de batch.
 
     Returns:
@@ -90,11 +89,6 @@ def generate_run_name(architecture_name, params):
     # Se agrega weight_decay sólo para AdamW
     if optimizer == "AdamW":
         hyperparams.append(f"wd:{params['weight_decay']}")
-
-    # Se agrega momentum y nesterov sólo para SGD
-    elif optimizer == "SGD":
-        hyperparams.append(f"mom:{params['momentum']}")
-        hyperparams.append(f"nest:{'T' if params['nesterov'] else 'F'}")
             
     # Batch size
     hyperparams.append(f"bs:{params['batch_size']}")
@@ -124,15 +118,9 @@ def log_params_to_mlflow(params):
         for i, units in enumerate(dense_units):
             params_mlflow[f"dense_units_{i+1}"] = units
     
-    # Eliminar los hiperparámetros que no corresponden al optimizador seleccionado
-    optimizer = params_mlflow["optimizer"]
-
-    if optimizer != "AdamW":
-        params_mlflow.pop("weight_decay",None)
-
-    if optimizer != "SGD":
-        params_mlflow.pop("momentum", None)
-        params_mlflow.pop("nesterov", None)
+    # Eliminar weight_decay si el optimizador seleccionado no es AdamW
+    if params_mlflow["optimizer"] != "AdamW":
+        params_mlflow.pop("weight_decay", None)
             
     # Registrar los hiperparámetros en el run activo de MLflow
     mlflow.log_params(params=params_mlflow)

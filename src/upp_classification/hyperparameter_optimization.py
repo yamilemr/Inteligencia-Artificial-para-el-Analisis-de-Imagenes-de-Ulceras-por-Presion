@@ -9,7 +9,7 @@ from upp_classification.evaluation import evaluate_model_datasets
 from upp_classification.config import SEED, OPTUNA_DIR
 
 
-def suggest_hyperparameters(trial):
+def suggest_hyperparameters(trial, search_space):
     """
     Define el espacio de búsqueda de hiperparámetros y devuelve un diccionario con
     la configuración seleccionada por Optuna para un trial específico.
@@ -17,6 +17,23 @@ def suggest_hyperparameters(trial):
     Args:
     - trial (optuna.trial.Trial): Objeto de Optuna utilizado para sugerir valores de 
                                   hiperparámetros dentro del espacio de búsqueda definido.
+    - search_space (dict): Diccionario que define el espacio de búsqueda de cada hiperparámetro.
+                           Por ejemplo:
+                           search_space = {
+                               "dense_layers": {"low": 0, "high": 2},
+                               "dense_units": [32, 64, 128, 256],
+                               "dropout_rate": {"low": 0.2, "high": 0.5, "step": 0.1},
+                               "optimizer_params": {
+                                   "Adam": {
+                                       "learning_rate": {"low": 1e-5, "high": 1e-3, "log": True}
+                                   },
+                                   "AdamW": {
+                                       "learning_rate": {"low": 1e-5, "high": 1e-3, "log": True},
+                                       "weight_decay": {"low": 1e-7, "high": 1e-2, "log": True}
+                                   }
+                               },
+                               "batch_size": [16, 32]
+                           }
 
     Returns:
     - dict: Diccionario con los hiperparámetros seleccionados para el trial actual.
@@ -26,41 +43,49 @@ def suggest_hyperparameters(trial):
             - optimizer (str): Optimizador.
             - learning_rate (float): Tasa de aprendizaje del optimizador.
             - weight_decay (float): Decaimiento de pesos para AdamW.
-            - momentum (float): Momentum para SGD.
-            - nesterov (bool): Indica si se usa momentum de Nesterov en SGD.
             - batch_size (int): Tamaño de batch.
     """
     params = {
-        "dense_layers": trial.suggest_int(name="dense_layers", low=0, high=2),
-        "dropout_rate": trial.suggest_float(name="dropout_rate", low=0.2, high=0.5, step=0.1),
-        "optimizer": trial.suggest_categorical(name="optimizer", choices=["Adam", "AdamW", "SGD"]),
-        "batch_size": trial.suggest_categorical(name="batch_size", choices=[16, 32])
+        "dense_layers": trial.suggest_int(
+            name="dense_layers", 
+            low=search_space["dense_layers"]["low"],
+            high=search_space["dense_layers"]["high"]
+        ),
+        "dropout_rate": trial.suggest_float(
+            name="dropout_rate", 
+            low=search_space["dropout_rate"]["low"],
+            high=search_space["dropout_rate"]["high"],
+            step=search_space["dropout_rate"]["step"]
+        ),
+        "optimizer": trial.suggest_categorical(name="optimizer", choices=list(search_space["optimizer_params"].keys())),
+        "batch_size":  trial.suggest_categorical(name="batch_size", choices=search_space["batch_size"])
     }
 
     # Número de neuronas en cada capa densa
     params["dense_units"] = [] # Si dense_layers=0, la lista permanecerá vacía
     for i in range(params["dense_layers"]):
-        # Se crea un hiperparámetro independiente por cada capa densa  (dense_units_1, dense_units_2)
-        units = trial.suggest_categorical(name=f"dense_units_{i+1}", choices=[32, 64, 128])
+        # Se crea un hiperparámetro independiente por cada capa densa  (dense_units_1, dense_units_2, ...)
+        units = trial.suggest_categorical(name=f"dense_units_{i+1}", choices=search_space["dense_units"])
         params["dense_units"].append(units)
-        
+    
     # Hiperparámetros para cada optimizador
+    optimizer_params = search_space["optimizer_params"][params["optimizer"]]
+
     if params["optimizer"] == "Adam":
-        params["learning_rate"] = trial.suggest_float(name="lr_adam", low=1e-4, high=1e-2, log=True)
+        lr = optimizer_params["learning_rate"]
+        params["learning_rate"] = trial.suggest_float(name="lr_adam", low=lr["low"], high=lr["high"], log=lr["log"])
     
     elif params["optimizer"] == "AdamW":
-        params["learning_rate"] = trial.suggest_float(name="lr_adamw", low=1e-4, high=1e-2, log=True)
-        params["weight_decay"] = trial.suggest_float(name="weight_decay", low=1e-6, high=1e-2, log=True)
-    
-    elif params["optimizer"] == "SGD":
-        params["learning_rate"] = trial.suggest_float(name="lr_sgd", low=1e-3, high=1e-1, log=True)
-        params["momentum"] = trial.suggest_float(name="momentum", low=0.8, high=0.99)
-        params["nesterov"] = trial.suggest_categorical(name="nesterov", choices=[True, False])
+        lr = optimizer_params["learning_rate"]
+        params["learning_rate"] = trial.suggest_float(name="lr_adamw", low=lr["low"], high=lr["high"], log=lr["log"])
+        
+        wd = optimizer_params["weight_decay"]
+        params["weight_decay"] = trial.suggest_float(name="weight_decay", low=wd["low"], high=wd["high"], log=wd["log"])
 
     return params
 
 
-def objective(trial, base_model_fn, preprocess_fn, class_weights):
+def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights):
     """
     Función objetivo utilizada por Optuna para evaluar una configuración concreta de hiperparámetros.
 
@@ -71,6 +96,7 @@ def objective(trial, base_model_fn, preprocess_fn, class_weights):
                                 (ej. tensorflow.keras.applications.ConvNeXtTiny).
     - preprocess_fn (callable): Función de preprocesamiento asociada al modelo base.
                                 (ej. convnext.preprocess_input).
+    - search_space (dict): Diccionario que define el espacio de búsqueda de cada hiperparámetro.
     - class_weights (dict): Diccionario con los pesos balanceados de cada clase, calculados a partir 
                             del conjunto de entrenamiento.
 
@@ -82,7 +108,7 @@ def objective(trial, base_model_fn, preprocess_fn, class_weights):
                           y detiene el entrenamiento de forma anticipada.
     """
     # Obtener hiperparámetros sugeridos por Optuna
-    params = suggest_hyperparameters(trial=trial)
+    params = suggest_hyperparameters(trial=trial, search_space=search_space)
 
     # Generar el nombre del run de MLflow
     model_name = base_model_fn.__name__
@@ -149,7 +175,7 @@ def objective(trial, base_model_fn, preprocess_fn, class_weights):
             raise
 
 
-def run_hyperparameter_search(base_model_fn, preprocess_fn, n_trials=60, optuna_dir=OPTUNA_DIR):
+def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, n_trials=60, optuna_dir=OPTUNA_DIR):
     """
     Ejecuta la búsqueda de hiperparámetros utilizando Optuna.
 
@@ -158,6 +184,7 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, n_trials=60, optuna_
                                 (ej. tensorflow.keras.applications.ConvNeXtTiny).
     - preprocess_fn (callable): Función de preprocesamiento asociada al modelo base.
                                 (ej. convnext.preprocess_input).
+    - search_space (dict): Diccionario que define el espacio de búsqueda de cada hiperparámetro.
     - n_trials (int, optional): Número de configuraciones de hiperparámetros que serán evaluadas.
                                 Por defecto es 60.
     - optuna_dir (str o Path, optional): Directorio donde se almacenará la base de datos SQLite del 
@@ -202,6 +229,7 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, n_trials=60, optuna_
                 trial=trial, 
                 base_model_fn=base_model_fn, 
                 preprocess_fn=preprocess_fn,
+                search_space=search_space,
                 class_weights=class_weights
             ),
         n_trials=n_trials

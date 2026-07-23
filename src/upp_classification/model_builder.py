@@ -15,12 +15,12 @@ def build_model(params, base_model_fn, input_shape=INPUT_SHAPE, num_classes=NUM_
     Args:
     - params (dict): Diccionario con los hiperparámetros seleccionados. Debe contener:
                      - dense_units (list[int]): Número de neuronas por capa densa.
-                     - dropout_rate (float): Tasa de dropout aplicada antes de la capa de salida.
-                     - optimizer (str): Optimizador (Adam, AdamW o SGD).
-                     - learning_rate (float): Tasa de aprendizaje del optimizador.
-                     - weight_decay (float): Decaimiento de pesos para AdamW.
-                     - momentum (float): Momentum para SGD.
-                     - nesterov (bool): Indica si se usa momentum de Nesterov en SGD.
+                     - dropout_rate (float): Tasa de dropout aplicada después de cada capa densa
+                                             o directamente después del GlobalAveragePooling2D si
+                                             no existen capas densas.
+                     - optimizer (str): Optimizador (Adam o AdamW).
+                     - learning_rate (float): Tasa de aprendizaje inicial del optimizador.
+                     - weight_decay (float): Decaimiento de pesos (sólo para AdamW).
     - base_model_fn (callable): Función constructora del modelo base de Keras.
                                 (ej. tensorflow.keras.applications.ConvNeXtTiny).
     - input_shape (tuple, optional): Dimensiones del tensor de entrada. Por defecto es INPUT_SHAPE.
@@ -29,6 +29,9 @@ def build_model(params, base_model_fn, input_shape=INPUT_SHAPE, num_classes=NUM_
 
     Returns:
     - tensorflow.keras.Model: Modelo de Keras compilado.
+
+    Raises:
+    - ValueError: Si el optimizador especificado en params no es compatible.
     """
     # Capas de aumento de datos
     # Estas transformaciones se aplicarán en cada batch sólo durante el fit()
@@ -64,11 +67,16 @@ def build_model(params, base_model_fn, input_shape=INPUT_SHAPE, num_classes=NUM_
     x = layers.GlobalAveragePooling2D()(x)
 
     # Agregar las capas densas con el número de neuronas definido en params
-    for units in params["dense_units"]:
-        x = layers.Dense(units=units, activation="relu")(x)
+    # Después de cada capa densa se aplica Dropout como regularización
+    if params["dense_units"]:
+        for units in params["dense_units"]:
+            x = layers.Dense(units=units, activation="relu")(x)
+            x = layers.Dropout(rate=params["dropout_rate"])(x)
 
-    # Regularización para evitar sobreajuste
-    x = layers.Dropout(rate=params["dropout_rate"])(x)
+    # Si no se agregan capas densas, aplicar Dropout sobre las características
+    # extraídas por el modelo base
+    else:
+        x = layers.Dropout(rate=params["dropout_rate"])(x)
 
     # Capa de salida (se obtienen las probabilidades por clase)
     outputs = layers.Dense(units=num_classes, activation="softmax")(x)
@@ -88,12 +96,8 @@ def build_model(params, base_model_fn, input_shape=INPUT_SHAPE, num_classes=NUM_
             weight_decay=params["weight_decay"]
         )
 
-    elif params["optimizer"] == "SGD":
-        optimizer = tf.keras.optimizers.SGD(
-            learning_rate=params["learning_rate"],
-            momentum=params["momentum"],
-            nesterov=params["nesterov"],
-        )
+    else:
+        raise ValueError(f"Optimizador no soportado: {params['optimizer']}")
 
     # Compilar el modelo
     model.compile(
