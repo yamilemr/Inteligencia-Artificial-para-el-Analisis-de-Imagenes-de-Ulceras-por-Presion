@@ -39,6 +39,7 @@ def train_model(model, train_ds, val_ds, class_weights, epochs=EPOCHS, use_mlflo
         EarlyStopping(
             monitor="val_loss",
             patience=10, # Espera 10 épocas sin mejoras antes de detenerse
+            min_delta=1e-4, # Considera una mejora sólo si val_loss disminuye al menos 1e-4
             restore_best_weights=True # Restaura los pesos de la época con el mejor val_loss
         )
     )
@@ -49,7 +50,8 @@ def train_model(model, train_ds, val_ds, class_weights, epochs=EPOCHS, use_mlflo
             monitor="val_loss",
             factor=0.5, # Reduce el learning rate a la mitad cuando no hay mejora
             patience=4, # Espera 4 épocas sin mejoras antes de reducir
-            min_lr=1e-7 # Learning rate mínimo permitida
+            min_delta=1e-4, # Considera una mejora sólo si val_loss disminuye al menos 1e-4
+            min_lr=1e-7 # Learning rate mínimo permitido
         )
     )
 
