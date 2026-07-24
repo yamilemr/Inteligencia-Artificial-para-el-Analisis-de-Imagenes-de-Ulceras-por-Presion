@@ -1,4 +1,5 @@
 import numpy as np
+import tensorflow as tf
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, precision_recall_fscore_support
 from upp_classification.mlflow_tracking import log_metrics_to_mlflow, log_class_metrics_to_mlflow
 
@@ -17,27 +18,32 @@ def get_predictions(model, dataset):
              - y_pred (np.ndarray): Etiquetas predichas por el modelo.
              - y_prob (np.ndarray): Probabilidades predichas por el modelo.
     """
-    # Listas para almacenar las etiquetas reales, predicciones y probabilidades
-    y_true = []
-    y_pred = []
-    y_prob = []
+    # Listas para almacenar las etiquetas reales, predicciones y probabilidades de cada lote
+    y_true_batches = []
+    y_pred_batches = []
+    y_prob_batches = []
 
     # Recorrer el dataset una sola vez lote por lote para mantener la correspondencia
     # entre las imágenes y sus etiquetas, aún cuando el dataset utiliza shuffle
     for images, labels in dataset:
-        # Obtener las probabilidades predichas por el modelo para el lote actual
-        probs = model(images, training=False).numpy()
+        # Obtener los logits predichos por el modelo para el lote actual
+        logits = model(images, training=False)
+        
+        # Obtener la clase predicha y las probabilidades asociadas a cada imagen
+        preds = tf.argmax(logits, axis=-1).numpy()
+        probs = tf.nn.softmax(logits, axis=-1).numpy()
 
-        # Obtener la clase predicha (la de mayor probabilidad) para cada imagen
-        preds = np.argmax(probs, axis=1)
+        # Almacenar las etiquetas reales, predicciones y probabilidades del lote actual
+        y_true_batches.append(labels.numpy())
+        y_pred_batches.append(preds)
+        y_prob_batches.append(probs)
 
-        # Almacenar las etiquetas reales, las predicciones y las probabilidades
-        y_true.extend(labels.numpy())
-        y_pred.extend(preds)
-        y_prob.extend(probs)
+    # Unir todos los lotes en un solo arreglo de NumPy
+    y_true = np.concatenate(y_true_batches, axis=0)
+    y_pred = np.concatenate(y_pred_batches, axis=0)
+    y_prob = np.concatenate(y_prob_batches, axis=0)
 
-    # Convertir las listas a arreglos de NumPy
-    return np.array(y_true), np.array(y_pred), np.array(y_prob)
+    return y_true, y_pred, y_prob
 
 
 def calculate_metrics(y_true, y_pred):

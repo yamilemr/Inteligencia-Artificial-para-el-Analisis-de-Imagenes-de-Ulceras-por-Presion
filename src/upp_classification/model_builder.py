@@ -5,8 +5,8 @@ from upp_classification.config import INPUT_SHAPE, NUM_CLASSES
 
 def build_model(params, base_model_fn, input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES):
     """
-    Construye y compila un modelo de clasificación con transfer learning,
-    utilizando un diccionario con hiperparámetros.
+    Construye y compila un modelo de clasificación con transfer learning, utilizando un 
+    diccionario con hiperparámetros.
 
     El modelo base es recibido como argumento para permitir utilizar diferentes
     arquitecturas (ConvNeXt, ResNet, DenseNet, etc.) manteniendo la misma
@@ -78,8 +78,8 @@ def build_model(params, base_model_fn, input_shape=INPUT_SHAPE, num_classes=NUM_
     else:
         x = layers.Dropout(rate=params["dropout_rate"])(x)
 
-    # Capa de salida (se obtienen las probabilidades por clase)
-    outputs = layers.Dense(units=num_classes, activation="softmax")(x)
+    # Capa de salida (se obtienen los logits por clase)
+    outputs = layers.Dense(units=num_classes, activation=None)(x)
 
     # Construir el modelo final
     model = models.Model(inputs=inputs, outputs=outputs)
@@ -99,10 +99,10 @@ def build_model(params, base_model_fn, input_shape=INPUT_SHAPE, num_classes=NUM_
     else:
         raise ValueError(f"Optimizador no soportado: {params['optimizer']}")
 
-    # Compilar el modelo
+    # Compilar el modelo utilizando logits como salida de la red
     model.compile(
         optimizer=optimizer,
-        loss="sparse_categorical_crossentropy",
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         metrics=["accuracy"]
     )
 
