@@ -207,7 +207,7 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, n_tria
     # Configurar pruner para detener trials con bajo rendimiento
     pruner = optuna.pruners.MedianPruner(
         n_startup_trials=10, # Trials iniciales que se ejecutan completos antes de comenzar a aplicar pruning
-        n_warmup_steps=10, # Número de épocas iniciales de cada trial durante las que no se evalúa pruning
+        n_warmup_steps=7, # Número de épocas iniciales de cada trial durante las que no se evalúa pruning
         interval_steps=1, # Frecuencia (en épocas) con la que se revisa si un trial debe ser detenido
         n_min_trials=3 # Número mínimo de trials que deben alcanzar una época para poder evaluar el pruning
     )
