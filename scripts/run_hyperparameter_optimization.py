@@ -73,8 +73,7 @@ def main():
     Ejecuta la búsqueda de hiperparámetros para la arquitectura seleccionada.
 
     La función procesa los argumentos de entrada, configura MLflow, ejecuta 
-    la optimización mediante Optuna, y muestra un resumen del mejor trial, 
-    la mejor pérdida de validación y los mejores hiperparámetros encontrados.
+    la optimización mediante Optuna, y muestra un resumen del mejor trial.
 
     Returns:
     - None
@@ -98,10 +97,10 @@ def main():
 
     # Mostrar un resumen de los resultados obtenidos
     print(f"\nArquitectura: {base_model_fn.__name__}")
-    print(f"Mejor trial: {study.best_trial.number}")
-    print(f"Mejor val_loss: {study.best_value:.6f}")
 
-    print("\nMejores hiperparámetros:")
+    print(f"\nMejor trial: {study.best_trial.number}")
+    print(f"Menor val_loss alcanzado: {study.best_value}")
+    print("Mejores hiperparámetros:")
     for key, value in study.best_params.items():
         print(f" - {key}: {value}")
 
