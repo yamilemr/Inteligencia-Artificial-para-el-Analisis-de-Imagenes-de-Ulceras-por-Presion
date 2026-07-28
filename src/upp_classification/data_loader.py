@@ -6,20 +6,19 @@ from sklearn.utils.class_weight import compute_class_weight
 from upp_classification.config import UPP_IMGS_DIR, UPP_CSV_FILE, PIID_IMGS_DIR, PIID_CSV_FILE, LABEL_MAP, IMAGE_SIZE, SEED
 
 
-def prepare_image(image_path, label, image_size=IMAGE_SIZE):
+def prepare_image(image_path, label=None, image_size=IMAGE_SIZE):
     """
     Lee una imagen JPEG, la redimensiona y convierte sus valores a punto flotante.
 
     Args:
-    - image_path (tf.Tensor): Ruta absoluta o relativa de la imagen (como tensor de cadena).
-    - label (tf.Tensor): Etiqueta entera correspondiente a la imagen.
-    - image_size (tuple, optional): Tamaño para redimensionar la imagen (alto, ancho).
-                                    Por defecto es IMAGE_SIZE.
+    - image_path (str o tf.Tensor): Ruta absoluta o relativa de la imagen (como cadena de texto o tensor).
+    - label (int o tf.Tensor, optional): Etiqueta entera correspondiente a la imagen. Por defecto es None.
+    - image_size (tuple, optional): Tamaño para redimensionar la imagen (alto, ancho). Por defecto es IMAGE_SIZE.
 
     Returns:
-    - tuple: Una tupla que contiene:
-             - image (tf.Tensor): El tensor de la imagen redimensionada de tipo tf.float32.
-             - label (tf.Tensor): El tensor de la etiqueta.
+    - tf.Tensor o tuple: 
+        - Si 'label' es None: Devuelve el tensor de la imagen procesada de tipo tf.float32.
+        - Si se proporciona 'label': Devuelve una tupla (image, label) con sus respectivos tensores.
     """
     # Leer los bytes del archivo desde la ruta
     image = tf.io.read_file(image_path)
@@ -33,7 +32,12 @@ def prepare_image(image_path, label, image_size=IMAGE_SIZE):
     # Convertir los valores de los píxeles a punto flotante
     image = tf.cast(image, tf.float32)
 
-    return image, label
+    # Si se proporcionó una etiqueta, devuelve la tupla
+    if label is not None:
+        return image, label
+
+    # Si no hay etiqueta, sólo devuelve la imagen
+    return image
 
 
 def create_dataset(images_dir, csv_file, split, batch=True, batch_size=32, image_size=IMAGE_SIZE):
