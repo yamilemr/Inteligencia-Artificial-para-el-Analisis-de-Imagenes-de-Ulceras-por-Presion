@@ -3,12 +3,12 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-from upp_classification.config import CLASS_NAMES
+from upp_classification.config import CLASS_NAMES, CLASS_LABELS, UPP_CSV_FILE, PIID_CSV_FILE
 
 
 def plot_training_curves(history):
     """
-    Grafica las curvas de entrenamiento y validación para accuracy y loss.
+    Genera un gráfico con las curvas de entrenamiento y validación para accuracy y loss.
 
     Args:
     - history (keras.callbacks.History): Objeto history devuelto por `model.fit()`.
@@ -72,7 +72,7 @@ def plot_training_curves(history):
 
 def plot_confusion_matrix(cm, metrics, title, class_names=CLASS_NAMES):
     """
-    Grafica la matriz de confusión e incluye las métricas globales.
+    Genera un gráfico con la matriz de confusión (incluye las métricas globales).
 
     Args:
     - cm (np.ndarray): Matriz de confusión.
@@ -119,7 +119,7 @@ def plot_confusion_matrix(cm, metrics, title, class_names=CLASS_NAMES):
 
 def plot_class_metrics(class_metrics, title, class_names=CLASS_NAMES):
     """
-    Grafica las métricas de evaluación por clase en formato de tabla.
+    Genera un gráfico con las métricas de evaluación por clase en formato de tabla.
 
     Args:
     - class_metrics (dict): Diccionario con las métricas por clase.
@@ -164,3 +164,69 @@ def plot_class_metrics(class_metrics, title, class_names=CLASS_NAMES):
     plt.tight_layout()
     
     return fig
+
+
+def plot_dataset_distribution(upp_csv_file=UPP_CSV_FILE, piid_csv_file=PIID_CSV_FILE):
+    """
+    Genera un gráfico de barras con la distribución de imágenes por clase y split (train, val y test)
+    de ambos conjuntos (UPP y PIID).
+
+    Args:
+    - upp_csv_file (str o Path, optional): Ruta del archivo CSV que contiene los metadatos de las 
+                                           imágenes del dataset principal. Por defecto es UPP_CSV_FILE.
+    - piid_csv_file (str o Path, optional): Ruta del archivo CSV que contiene los metadatos de las 
+                                            imágenes del dataset PIID. Por defecto es PIID_CSV_FILE.
+
+    Returns:
+    - matplotlib.figure.Figure: Figura con la gráfica de distribución generada.
+    """
+    df_upp = pd.read_csv(upp_csv_file)
+    df_piid = pd.read_csv(piid_csv_file)
+
+    # Alinear columnas faltantes en PIID para poder concatenar ambos datasets
+    df_piid["patient_id"] = None
+    df_piid["lesion_id"] = None
+    df_all = pd.concat([df_upp, df_piid], ignore_index=True)
+
+    # Cambiar los nombres de las clases y de los splits
+    label_map = {key: value["name"] for key, value in CLASS_LABELS.items()}
+    split_map = {"train": "Entrenamiento", "val": "Validación", "test": "Prueba"}
+
+    class_order = ["Piel sana", "Estadio I", "Estadio II", "Estadio III", "Estadio IV", "No estadiable"]
+    split_order = ["Entrenamiento", "Validación", "Prueba"]
+
+    # Aplicar el mapeo a la información de los datasets combinados
+    label_plot = df_all["label"].map(label_map)
+    split_plot = df_all["split"].map(split_map)
+
+    # Contar imágenes por clase y por split
+    counts = (
+        pd.DataFrame({"label": label_plot, "split": split_plot})
+        .groupby(["label", "split"])
+        .size()
+        .unstack(fill_value=0)
+        .reindex(index=class_order, columns=split_order)
+    )
+
+    # Número total de imágenes para cada split
+    split_totals = counts.sum(axis=0)
+    counts.columns = [f"{col} ({split_totals[col]} imgs)" for col in counts.columns]
+
+    # Graficar
+    ax = counts.plot(kind="bar", figsize=(7, 4), width=0.7, color=["#8c74b5", "#95a8cf", "#b6cee4"])
+    
+    ax.set_xlabel("")
+    ax.set_title("Distribución de imágenes por clase y split")
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    # Colocar la cantidad exacta arriba de cada barra
+    for container in ax.containers:
+        ax.bar_label(container, fmt="%d", fontsize=8.5)
+
+    # Ajustar el espaciado y la rotación de los nombres en el eje x
+    plt.xticks(rotation=0)
+    plt.tight_layout()
+
+    return ax.get_figure()

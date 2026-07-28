@@ -11,9 +11,13 @@ PIID_IMGS_DIR = Path(os.getenv("PIID_IMGS_DIR")) # Carpeta que contiene las imá
 # Directorio raíz del repositorio
 BASE_DIR = Path(__file__).resolve().parents[2] 
 
-# Archivos CSV con los datos de las imágenes de cada dataset
-UPP_CSV_FILE = BASE_DIR / "data" / "labels_upp.csv"
-PIID_CSV_FILE = BASE_DIR / "data" / "labels_piid.csv"
+# Directorio para almacenar los archivos CSV
+DATA_DIR = BASE_DIR / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# Archivos CSV con los metadatos de las imágenes de cada dataset
+UPP_CSV_FILE = DATA_DIR / "upp_metadata.csv"
+PIID_CSV_FILE = DATA_DIR / "piid_metadata.csv"
 
 # Directorio para almacenar los experimentos (Optuna y MLflow)
 EXPERIMENTS_DIR = BASE_DIR / "experiments"
@@ -29,6 +33,14 @@ MLFLOW_ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Base de datos SQLite utilizada por MLflow para almacenar los experimentos, runs, parámetros y métricas
 MLFLOW_TRACKING_URI = f"sqlite:///{EXPERIMENTS_DIR / 'mlflow_tracking.db'}"
+
+# Directorio para almacenar los reportes (gráficas y métricas)
+REPORTS_DIR = BASE_DIR / "reports"
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Directorio donde se almacenan las figuras generadas
+FIGURES_DIR = REPORTS_DIR / "figures"
+FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
 # Configuración de las imágenes
 IMAGE_SIZE = (224, 224)
@@ -57,10 +69,10 @@ CLASS_LABELS  = {
 }
 
 # Diccionario para mapear de etiquetas de texto a índices numéricos
-LABEL_MAP = {key: value["id"] for key, value in CLASS_LABELS .items()}
+LABEL_MAP = {key: value["id"] for key, value in CLASS_LABELS.items()}
 
 # Lista con los nombres descriptivos de las clases
-CLASS_NAMES = [value["name"] for value in CLASS_LABELS .values()]
+CLASS_NAMES = [value["name"] for value in CLASS_LABELS.values()]
 
 # Número de clases
 NUM_CLASSES = len(CLASS_LABELS)
