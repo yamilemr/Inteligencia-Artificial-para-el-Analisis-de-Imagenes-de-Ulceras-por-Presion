@@ -3,14 +3,13 @@ from tensorflow.keras import layers, models
 from upp_classification.config import INPUT_SHAPE, NUM_CLASSES
 
 
-def build_model(params, base_model_fn, input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES):
+def build_model(params, base_model_fn, preprocess_fn=None, input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, use_augmentation=True):
     """
     Construye y compila un modelo de clasificación con transfer learning, utilizando un 
     diccionario con hiperparámetros.
 
-    El modelo base es recibido como argumento para permitir utilizar diferentes
-    arquitecturas (ConvNeXt, ResNet, DenseNet, etc.) manteniendo la misma
-    estructura de clasificación.
+    El modelo base es recibido como argumento para permitir utilizar diferentes arquitecturas
+    (ConvNeXt, ResNet, DenseNet, etc.) manteniendo la misma estructura de clasificación.
 
     Args:
     - params (dict): Diccionario con los hiperparámetros seleccionados. Debe contener:
@@ -23,9 +22,13 @@ def build_model(params, base_model_fn, input_shape=INPUT_SHAPE, num_classes=NUM_
                      - weight_decay (float): Decaimiento de pesos (sólo para AdamW).
     - base_model_fn (callable): Función constructora del modelo base de Keras.
                                 (ej. tensorflow.keras.applications.ConvNeXtTiny).
+    - preprocess_fn (callable, optional): Función de preprocesamiento específica del modelo de Keras. 
+                                          Por defecto es None.
     - input_shape (tuple, optional): Dimensiones del tensor de entrada. Por defecto es INPUT_SHAPE.
     - num_classes (int, optional): Número total de clases a predecir en la capa de salida. 
                                    Por defecto es NUM_CLASSES.
+    - use_augmentation (bool, optional): Indica si se aplican capas de aumento de datos durante el 
+                                         entrenamiento. Por defecto es True.
 
     Returns:
     - tensorflow.keras.Model: Modelo de Keras compilado.
@@ -33,16 +36,6 @@ def build_model(params, base_model_fn, input_shape=INPUT_SHAPE, num_classes=NUM_
     Raises:
     - ValueError: Si el optimizador especificado en params no es compatible.
     """
-    # Capas de aumento de datos
-    # Estas transformaciones se aplicarán en cada batch sólo durante el fit()
-    data_augmentation = tf.keras.Sequential([
-            layers.RandomFlip("horizontal"),
-            layers.RandomRotation(0.05),
-            layers.RandomZoom(0.1),
-            layers.RandomContrast(0.05),
-            layers.RandomTranslation(height_factor=0.05, width_factor=0.05)
-    ], name="data_augmentation")
-
     # Cargar el modelo base con los pesos de ImageNet
     base_model = base_model_fn(
         include_top=False,
@@ -56,8 +49,26 @@ def build_model(params, base_model_fn, input_shape=INPUT_SHAPE, num_classes=NUM_
     # Entrada del modelo
     inputs = layers.Input(shape=input_shape)
 
-    # Aplicar aumento de datos
-    x = data_augmentation(inputs) 
+    # Iniciar flujo de tensores
+    x = inputs
+
+    # Aplicar aumento de datos si está indicado
+    if use_augmentation:
+        # Capas de aumento de datos
+        # Estas transformaciones se aplicarán en cada batch sólo durante el fit()
+        data_augmentation = tf.keras.Sequential([
+                layers.RandomFlip("horizontal"),
+                layers.RandomRotation(0.05),
+                layers.RandomZoom(0.1),
+                layers.RandomContrast(0.05),
+                layers.RandomTranslation(height_factor=0.05, width_factor=0.05)
+        ], name="data_augmentation")
+
+        x = data_augmentation(x) 
+
+    # Aplicar el preprocesamiento específico del modelo
+    if preprocess_fn is not None:
+        x = preprocess_fn(x)
 
     # Extraer características con el modelo base
     # training=False mantiene el comportamiento de BatchNormalization

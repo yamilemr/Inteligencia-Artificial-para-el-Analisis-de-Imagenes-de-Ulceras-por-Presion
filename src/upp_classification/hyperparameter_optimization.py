@@ -132,13 +132,15 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights):
 
         try:
             # Cargar los datasets con el batch_size seleccionado por Optuna
-            train_ds, val_ds, _ = get_dataset_splits(
-                batch_size=params["batch_size"],
-                preprocess_fn=preprocess_fn
-            )
+            train_ds, val_ds, _ = get_dataset_splits(batch_size=params["batch_size"])
             
             # Construir modelo con los hiperparámetros seleccionados
-            model = build_model(params=params, base_model_fn=base_model_fn)
+            model = build_model(
+                params=params, 
+                base_model_fn=base_model_fn,
+                preprocess_fn=preprocess_fn,
+                use_augmentation=True
+            )
 
             # Entrenar el modelo con la configuración actual
             history = train_model(
@@ -147,7 +149,7 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights):
                 val_ds=val_ds,
                 class_weights=class_weights,
                 use_mlflow=True,
-                pruning_callback=pruning_callback,
+                pruning_callback=pruning_callback
             )
 
             # Evaluar el modelo en los conjuntos de entrenamiento y validación
