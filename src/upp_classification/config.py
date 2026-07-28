@@ -15,14 +15,20 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 UPP_CSV_FILE = BASE_DIR / "data" / "labels_upp.csv"
 PIID_CSV_FILE = BASE_DIR / "data" / "labels_piid.csv"
 
+# Directorio para almacenar los experimentos (Optuna y MLflow)
+EXPERIMENTS_DIR = BASE_DIR / "experiments"
+EXPERIMENTS_DIR.mkdir(parents=True, exist_ok=True)
+
 # Directorio donde se almacenan los estudios de Optuna
-OPTUNA_DIR = BASE_DIR / "experiments" / "optuna"
+OPTUNA_DIR = EXPERIMENTS_DIR / "optuna"
+OPTUNA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Directorio donde se almacenan los artefactos de MLflow
-MLFLOW_ARTIFACTS_DIR = BASE_DIR / "experiments" / "mlflow_artifacts"
+MLFLOW_ARTIFACTS_DIR = EXPERIMENTS_DIR / "mlflow_artifacts"
+MLFLOW_ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Base de datos SQLite utilizada por MLflow para almacenar los experimentos, runs, parámetros y métricas
-MLFLOW_TRACKING_URI = f"sqlite:///{BASE_DIR / 'experiments' / 'mlflow_tracking.db'}"
+MLFLOW_TRACKING_URI = f"sqlite:///{EXPERIMENTS_DIR / 'mlflow_tracking.db'}"
 
 # Configuración de las imágenes
 IMAGE_SIZE = (224, 224)
