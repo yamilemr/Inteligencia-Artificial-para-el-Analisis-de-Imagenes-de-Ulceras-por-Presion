@@ -121,7 +121,7 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights):
         mlflow.set_tag("optuna_trial", trial.number)
         mlflow.set_tag("stage", "hyperparameter_optimization")
 
-        # Registrar hiperparámetros en MLflow
+        # Registrar los hiperparámetros en MLflow
         log_params_to_mlflow(params=params)
 
         # Callback para detener trials poco prometedores durante la optimización
@@ -134,7 +134,7 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights):
             # Cargar los datasets con el batch_size seleccionado por Optuna
             train_ds, val_ds, _ = get_dataset_splits(batch_size=params["batch_size"])
             
-            # Construir modelo con los hiperparámetros seleccionados
+            # Construir el modelo con los hiperparámetros seleccionados
             model = build_model(
                 params=params, 
                 base_model_fn=base_model_fn,
@@ -238,3 +238,38 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, n_tria
     )
 
     return study
+
+
+def reconstruct_best_params(best_params):
+    """
+    Convierte el diccionario plano devuelto por Optuna en la estructura anidada
+    que espera la función build_model().
+
+    Args:
+    - best_params (dict): Diccionario con los hiperparámetros devueltos 
+                          por study.best_params de Optuna.
+
+    Returns:
+    - dict: Diccionario jerárquico con el fomarto que espera build_model().
+    """
+    params = {
+        "dense_layers": best_params["dense_layers"],
+        "dropout_rate": best_params["dropout_rate"],
+        "optimizer": best_params["optimizer"],
+        "batch_size": best_params["batch_size"],
+        "dense_units": []
+    }
+    
+    # Recuperar las neuronas por cada capa densa configurada
+    for i in range(params["dense_layers"]):
+        params["dense_units"].append(best_params[f"dense_units_{i+1}"])
+        
+    # Recuperar los parámetros específicos del optimizador
+    if params["optimizer"] == "Adam":
+        params["learning_rate"] = best_params["lr_adam"]
+        
+    elif params["optimizer"] == "AdamW":
+        params["learning_rate"] = best_params["lr_adamw"]
+        params["weight_decay"] = best_params["weight_decay"]
+        
+    return params

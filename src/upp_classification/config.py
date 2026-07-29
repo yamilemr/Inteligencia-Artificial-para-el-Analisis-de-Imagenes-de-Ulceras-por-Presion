@@ -34,6 +34,10 @@ MLFLOW_ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 # Base de datos SQLite utilizada por MLflow para almacenar los experimentos, runs, parámetros y métricas
 MLFLOW_TRACKING_URI = f"sqlite:///{EXPERIMENTS_DIR / 'mlflow_tracking.db'}"
 
+# Directorio para almacenar los modelos entrenados
+MODELS_DIR = BASE_DIR / "models"
+MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
 # Directorio para almacenar los reportes (gráficas y métricas)
 REPORTS_DIR = BASE_DIR / "reports"
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)

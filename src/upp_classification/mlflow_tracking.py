@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from tensorflow.keras.callbacks import Callback
 from upp_classification.visualization import plot_confusion_matrix, plot_class_metrics
-from upp_classification.config import MLFLOW_TRACKING_URI, MLFLOW_ARTIFACTS_DIR, CLASS_LABELS
+from upp_classification.config import MLFLOW_TRACKING_URI, MLFLOW_ARTIFACTS_DIR, MODELS_DIR, CLASS_LABELS
 
 
 def setup_mlflow(experiment_name, tracking_uri=MLFLOW_TRACKING_URI, artifacts_dir=MLFLOW_ARTIFACTS_DIR):
@@ -210,3 +210,29 @@ def log_class_metrics_to_mlflow(class_metrics, dataset_name):
     fig = plot_class_metrics(class_metrics=class_metrics, title=dataset_name)
     mlflow.log_figure(figure=fig, artifact_file=f"class_metrics/{dataset_name}.png")
     plt.close(fig)
+
+
+def log_and_save_model(model, architecture_name, models_dir=MODELS_DIR):
+    """
+    Registra en MLflow el modelo y también lo guarda de forma local.
+
+    Args:
+    - model (keras.Model): Modelo entrenado a guardar.
+    - architecture_name (str): Nombre de la arquitectura (ej. ConvNeXtTiny).
+    - models_dir (Path, optional): Ruta al directorio para guardar el modelo. 
+                                   Por defecto es MODELS_DIR.
+
+    Returns:
+    - None: La función registra el modelo en MLflow y lo guarda localmente.
+    """
+    registered_model_name = f"best_{architecture_name}_model"
+
+    # Registrar el modelo de Keras como artefacto en MLflow
+    mlflow.tensorflow.log_model(
+        model=model, 
+        artifact_path="best_model",
+        registered_model_name=registered_model_name
+    )
+
+    # Guardar localmente
+    model.save(models_dir / f"{registered_model_name}.keras")
