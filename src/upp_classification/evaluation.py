@@ -101,7 +101,7 @@ def calculate_class_metrics(y_true, y_pred):
 def evaluate_model_datasets(model, train_ds=None, val_ds=None, test_ds=None, return_predictions=True, include_class_metrics=True, use_mlflow=True):
     """
     Evalúa un modelo entrenado sobre los datasets proporcionados de forma independiente.
-    Permite registrar las métricas globales y matrices de confusión en MLflow si se especifica.
+    Permite registrar las métricas (globales y/o por clase) en MLflow si se especifica.
 
     Args:
     - model (keras.Model): Modelo entrenado a evaluar.
@@ -110,7 +110,7 @@ def evaluate_model_datasets(model, train_ds=None, val_ds=None, test_ds=None, ret
     - test_ds (tf.data.Dataset, optional): Dataset de prueba. Por defecto es None.
     - return_predictions (bool, optional): Indica si se incluyen y_true, y_pred y y_prob en los resultados. Por defecto es True.
     - include_class_metrics (bool, optional): Indica si se calculan las métricas por clase. Por defecto es True.
-    - use_mlflow (bool, optional): Indica si se deben registrar las métricas globales y matrices en MLflow. Por defecto es True.
+    - use_mlflow (bool, optional): Indica si se deben registrar las métricas en MLflow. Por defecto es True.
 
     Returns:
     - dict: Diccionario con las métricas y matrices de confusión calculadas para cada 

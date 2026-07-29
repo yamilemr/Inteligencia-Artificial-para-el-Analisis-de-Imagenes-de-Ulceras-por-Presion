@@ -92,7 +92,7 @@ def main():
         base_model_fn=base_model_fn,
         preprocess_fn=preprocess_fn,
         search_space=SEARCH_SPACES[args.model],
-        n_trials=args.trials,
+        n_trials=args.trials
     )
 
     # Mostrar un resumen de los resultados obtenidos
