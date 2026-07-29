@@ -14,8 +14,8 @@ def train_model(model, train_ds, val_ds, class_weights, epochs=EPOCHS, use_mlflo
     - class_weights (dict): Diccionario con los pesos balanceados de cada clase, calculados a partir 
                             del conjunto de entrenamiento.
     - epochs (int, optional): Número máximo de épocas para el entrenamiento. Por defecto es EPOCHS.
-    - use_mlflow (bool, optional): Indica si se debe incluir el callback para registrar las métricas generadas 
-                                   por época en MLflow. Por defecto es True.
+    - use_mlflow (bool, optional): Indica si se debe incluir el callback para registrar las métricas 
+                                   generadas por época en MLflow. Por defecto es True.
     - pruning_callback (keras.callbacks.Callback, optional): Callback de Optuna utilizado para detener 
                                                              anticipadamente trials poco prometedores.
                                                              Por defecto es None.
@@ -29,8 +29,8 @@ def train_model(model, train_ds, val_ds, class_weights, epochs=EPOCHS, use_mlflo
     # Callback que registra en MLflow las métricas generadas al finalizar cada época de entrenamiento
     if use_mlflow:
         callbacks.append(MLflowMetricsCallback())
-        
-    # Pruning Callback (sólo se agrega si se pasa como argumento desde Optuna)
+    
+    # Callback de Optuna para podar trials con bajo rendimiento (sólo durante la optimización)
     if pruning_callback:
         callbacks.append(pruning_callback)
         
@@ -48,8 +48,8 @@ def train_model(model, train_ds, val_ds, class_weights, epochs=EPOCHS, use_mlflo
     callbacks.append(
         ReduceLROnPlateau(
             monitor="val_loss",
-            factor=0.5, # Reduce el learning rate a la mitad cuando no hay mejora
-            patience=4, # Espera 4 épocas sin mejoras antes de reducir
+            factor=0.6, # Factor por el que se multiplica la tasa de aprendizaje al reducirse
+            patience=3, # Número de épocas que espera sin mejoras antes de reducir
             min_delta=1e-4, # Considera una mejora sólo si val_loss disminuye al menos 1e-4
             min_lr=1e-7 # Learning rate mínimo permitido
         )
