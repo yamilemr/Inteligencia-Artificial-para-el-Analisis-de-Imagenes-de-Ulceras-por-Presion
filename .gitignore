@@ -1,6 +1,5 @@
-# Entornos y credenciales
+# Entornos virtuales y configuración del editor
 .venv/
-.env
 .vscode/
 
 # Carpeta de experimentación

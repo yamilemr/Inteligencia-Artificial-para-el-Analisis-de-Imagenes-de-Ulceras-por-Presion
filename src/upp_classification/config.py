@@ -1,19 +1,15 @@
-import os
 from pathlib import Path
-from dotenv import load_dotenv
-
-# Cargar las variables de entorno desde el .env
-load_dotenv()
-
-UPP_IMGS_DIR = Path(os.getenv("UPP_IMGS_DIR")) # Carpeta que contiene las imágenes del dataset principal
-PIID_IMGS_DIR = Path(os.getenv("PIID_IMGS_DIR")) # Carpeta que contiene las imágenes reclasificadas de PIID
 
 # Directorio raíz del repositorio
 BASE_DIR = Path(__file__).resolve().parents[2] 
 
-# Directorio para almacenar los archivos CSV
+# Directorio para almacenar los datos
 DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# Carpetas que contienen las imágenes de los datasets
+UPP_IMGS_DIR = DATA_DIR / "upp" # Imágenes del dataset principal
+PIID_IMGS_DIR = DATA_DIR / "piid_reclassified" # Imágenes reclasificadas de PIID
 
 # Archivos CSV con los metadatos de las imágenes de cada dataset
 UPP_CSV_FILE = DATA_DIR / "upp_metadata.csv"
