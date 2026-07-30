@@ -1,5 +1,6 @@
 # Entornos virtuales y configuración del editor
 .venv/
+.python-version
 .vscode/
 
 # Carpeta de experimentación
