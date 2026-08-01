@@ -106,6 +106,8 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights):
     Raises:
     - optuna.TrialPruned: Si el callback de pruning determina que el trial no es prometedor 
                           y detiene el entrenamiento de forma anticipada.
+    - Exception: Cualquier excepción producida durante la carga de los datos, construcción 
+                 del modelo, entrenamiento o evaluación.
     """
     # Obtener hiperparámetros sugeridos por Optuna
     params = suggest_hyperparameters(trial=trial, search_space=search_space)
@@ -168,12 +170,21 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights):
             
             # Registrar métrica objetivo de Optuna en MLflow
             mlflow.log_metric(key="best_val_loss", value=val_loss)
+
+            # Marcar el run de MLflow como completado correctamente
+            mlflow.set_tag("status", "completed")
         
             return val_loss
 
         except optuna.TrialPruned:
             # Marcar el run de MLflow como trial descartado por pruning
             mlflow.set_tag("status", "pruned")
+            raise
+
+        except Exception as e:
+            # Marcar el run de MLflow como trial finalizado con error
+            mlflow.set_tag("status", "failed")
+            mlflow.set_tag("error", str(e))
             raise
 
 
@@ -187,8 +198,9 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, n_tria
     - preprocess_fn (callable): Función de preprocesamiento asociada al modelo base.
                                 (ej. convnext.preprocess_input).
     - search_space (dict): Diccionario que define el espacio de búsqueda de cada hiperparámetro.
-    - n_trials (int, optional): Número de configuraciones de hiperparámetros que serán evaluadas.
-                                Por defecto es 60.
+    - n_trials (int, optional): Número total de configuraciones de hiperparámetros que se desea
+                                evaluar. Si el estudio ya existe, únicamente se ejecutarán los
+                                trials faltantes para alcanzar este número. Por defecto es 60.
     - optuna_dir (str o Path, optional): Directorio donde se almacenará la base de datos SQLite del 
                                          estudio de Optuna. Por defecto es OPTUNA_DIR.
 
@@ -224,7 +236,17 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, n_tria
         load_if_exists=True
     )
 
-    # Ejecutar la búsqueda de hiperparámetros
+    # Número de trials registrados en el estudio como completados o detenidos por pruning
+    completed_trials = len(
+        study.get_trials(
+            states=(
+                optuna.trial.TrialState.COMPLETE,
+                optuna.trial.TrialState.PRUNED
+            )
+        )
+    )
+    
+    # Ejecutar la optimización de hiperparámetros
     study.optimize(
         lambda trial:
             objective(
@@ -234,7 +256,7 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, n_tria
                 search_space=search_space,
                 class_weights=class_weights
             ),
-        n_trials=n_trials
+        n_trials=max(0, n_trials - completed_trials) # Ejecutar únicamente los trials faltantes para alcanzar n_trials
     )
 
     return study

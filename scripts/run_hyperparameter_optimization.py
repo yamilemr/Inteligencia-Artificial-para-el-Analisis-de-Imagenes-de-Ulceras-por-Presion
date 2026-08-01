@@ -40,7 +40,8 @@ def parse_args():
     Returns:
     - argparse.Namespace: Objeto que contiene los argumentos introducidos por el usuario:
                           - model (str): Arquitectura de transfer learning.
-                          - trials (int): Número de trials para la optimización.
+                          - trials (int): Número total de configuraciones de hiperparámetros 
+                                          que se desea evaluar.
                           - experiment (str): Nombre del experimento de MLflow.
     """
     parser = argparse.ArgumentParser()
@@ -56,7 +57,7 @@ def parse_args():
         "--trials",
         type=int,
         default=60,
-        help="Número de trials."
+        help="Número total de configuraciones de hiperparámetros a evaluar."
     )
 
     parser.add_argument(
