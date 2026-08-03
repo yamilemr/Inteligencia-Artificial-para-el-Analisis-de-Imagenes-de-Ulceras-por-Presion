@@ -85,7 +85,7 @@ def suggest_hyperparameters(trial, search_space):
     return params
 
 
-def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights):
+def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights, use_cache=False):
     """
     Función objetivo utilizada por Optuna para evaluar una configuración concreta de hiperparámetros.
 
@@ -99,6 +99,8 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights):
     - search_space (dict): Diccionario que define el espacio de búsqueda de cada hiperparámetro.
     - class_weights (dict): Diccionario con los pesos balanceados de cada clase, calculados a partir 
                             del conjunto de entrenamiento.
+    - use_cache (bool, optional): Si es True, habilita el uso de caché en disco para acelerar
+                                  la carga y procesamiento de los datos. Por defecto es False.
 
     Returns:
     - float: Métrica objetivo que Optuna intenta minimizar (en este caso es val_loss).
@@ -134,7 +136,10 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights):
 
         try:
             # Cargar los datasets con el batch_size seleccionado por Optuna
-            train_ds, val_ds, _ = get_dataset_splits(batch_size=params["batch_size"])
+            train_ds, val_ds, _ = get_dataset_splits(
+                batch_size=params["batch_size"],
+                use_cache=use_cache
+            )
             
             # Construir el modelo con los hiperparámetros seleccionados
             model = build_model(
@@ -188,7 +193,7 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights):
             raise
 
 
-def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, n_trials=60, optuna_dir=OPTUNA_DIR):
+def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, n_trials=60, optuna_dir=OPTUNA_DIR, use_cache=False):
     """
     Ejecuta la búsqueda de hiperparámetros utilizando Optuna.
 
@@ -203,7 +208,9 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, n_tria
                                 trials faltantes para alcanzar este número. Por defecto es 60.
     - optuna_dir (str o Path, optional): Directorio donde se almacenará la base de datos SQLite del 
                                          estudio de Optuna. Por defecto es OPTUNA_DIR.
-
+    - use_cache (bool, optional): Si es True, habilita el uso de caché en disco para acelerar
+                                  la carga y procesamiento de los datos. Por defecto es False.
+    
     Returns:
     - optuna.study.Study: Objeto Study de Optuna con los resultados completos de la optimización.
                           Permite acceder a:
@@ -254,7 +261,8 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, n_tria
                 base_model_fn=base_model_fn, 
                 preprocess_fn=preprocess_fn,
                 search_space=search_space,
-                class_weights=class_weights
+                class_weights=class_weights,
+                use_cache=use_cache
             ),
         n_trials=max(0, n_trials - completed_trials) # Ejecutar únicamente los trials faltantes para alcanzar n_trials
     )

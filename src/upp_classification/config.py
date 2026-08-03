@@ -15,6 +15,10 @@ PIID_IMGS_DIR = DATA_DIR / "piid_reclassified" # Imágenes reclasificadas de PII
 UPP_CSV_FILE = DATA_DIR / "upp_metadata.csv"
 PIID_CSV_FILE = DATA_DIR / "piid_metadata.csv"
 
+# Directorio para almacenar caches de tf.data en disco
+CACHE_DIR = DATA_DIR / "tf_cache"
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
 # Directorio para almacenar los experimentos (Optuna y MLflow)
 EXPERIMENTS_DIR = BASE_DIR / "experiments"
 EXPERIMENTS_DIR.mkdir(parents=True, exist_ok=True)
