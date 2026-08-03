@@ -80,20 +80,21 @@ def create_dataset(images_dir, csv_file, image_size, split, batch=True, batch_si
     # Crear el dataset inicial emparejando cada ruta de texto con su etiqueta
     dataset = tf.data.Dataset.from_tensor_slices((image_paths, labels))
 
-    # Convertir las rutas de texto en las imágenes procesadas reales
-    # Por cada ruta en el dataset, ejecuta 'prepare_image'
-    dataset = dataset.map(
-        lambda x, y: prepare_image(
-            image_path=x,
-            label=y,
-            image_size=image_size
-        ),
-        num_parallel_calls=tf.data.AUTOTUNE # Hace que el proceso se ejecute en paralelo
-    )
-
-    # Almacenar el dataset en caché (en disco) si se solicita, para evitar
-    # repetir la lectura y redimensionamiento de las imágenes en cada época
+    # Si se solicita el uso de caché, el mapeo de las imágenes es antes del shuffle
     if use_cache and cache_name:
+        # Convertir las rutas de texto en las imágenes procesadas reales
+        # Por cada ruta en el dataset, ejecuta 'prepare_image'
+        dataset = dataset.map(
+            lambda x, y: prepare_image(
+                image_path=x,
+                label=y,
+                image_size=image_size
+            ),
+            num_parallel_calls=tf.data.AUTOTUNE # Hace que el proceso se ejecute en paralelo
+        )
+
+        # Almacenar el dataset en caché (en disco), para evitar repetir
+        # la lectura y redimensionamiento de las imágenes en cada época
         dataset = dataset.cache(str(CACHE_DIR / cache_name))
 
     # El shuffle se hace sólo para el conjunto de entrenamiento
@@ -102,6 +103,17 @@ def create_dataset(images_dir, csv_file, image_size, split, batch=True, batch_si
             buffer_size=len(df_split),
             seed=SEED,
             reshuffle_each_iteration=True
+        )
+
+    # Si no se usa caché, las imágenes se mapean después del shuffle
+    if not use_cache:
+        dataset = dataset.map(
+            lambda x, y: prepare_image(
+                image_path=x,
+                label=y,
+                image_size=image_size
+            ),
+            num_parallel_calls=tf.data.AUTOTUNE
         )
 
     # Agrupar los datos en lotes del tamaño especificado sólo si se solicita
