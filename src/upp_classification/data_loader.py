@@ -40,18 +40,20 @@ def prepare_image(image_path, image_size, label=None):
     return image
 
 
-def create_dataset(images_dir, csv_file, image_size, split, batch=True, batch_size=32, use_cache=False, cache_name=None):
+def create_dataset(images_dir, df, image_size, split, batch=True, batch_size=32, prefetch=True, use_cache=False, cache_name=None):
     """
     Crea un tf.data.Dataset para train, val o test.
 
     Args:
     - images_dir (str o Path): Ruta de la carpeta en la que se encuentran las imágenes.
-    - csv_file (str): Ruta del archivo CSV que contiene los metadatos de las imágenes. 
-                      Debe contener las columnas 'filename', 'label' y 'split'.
+    - df (pandas.DataFrame): DataFrame que contiene los metadatos de las imágenes. 
+                             Debe contener las columnas 'filename', 'label' y 'split'.
     - image_size (tuple): Tamaño para redimensionar las imágenes (alto, ancho).
     - split (str): Partición de los datos a cargar ('train', 'val' o 'test').
     - batch (bool, optional): Si es True, agrupa las muestras en lotes. Por defecto es True.
     - batch_size (int, optional): Número de muestras procesadas por lote. Por defecto es 32.
+    - prefetch (bool, optional): Si es True, precarga el siguiente lote de datos mientras
+                                 se procesa el lote actual. Por defecto es True.
     - use_cache (bool, optional): Si es True, almacena las imágenes preprocesadas en disco 
                                   para acelerar el entrenamiento en épocas posteriores. 
                                   Por defecto es False.
@@ -63,8 +65,7 @@ def create_dataset(images_dir, csv_file, image_size, split, batch=True, batch_si
     """
     images_dir = Path(images_dir)
 
-    # Leer el CSV y filtrar las filas correspondientes al split
-    df = pd.read_csv(csv_file)
+    # Filtrar las filas correspondientes al split
     df_split = df[df["split"] == split].copy()
 
     # Lista con las rutas completas para cada imagen del dataset
@@ -80,17 +81,21 @@ def create_dataset(images_dir, csv_file, image_size, split, batch=True, batch_si
     # Crear el dataset inicial emparejando cada ruta de texto con su etiqueta
     dataset = tf.data.Dataset.from_tensor_slices((image_paths, labels))
 
-    # Si se solicita el uso de caché, el mapeo de las imágenes es antes del shuffle
-    if use_cache and cache_name:
-        # Convertir las rutas de texto en las imágenes procesadas reales
-        # Por cada ruta en el dataset, ejecuta 'prepare_image'
+    # Función de mapeo para convertir cada ruta de imagen en un tensor preprocesado
+    map_fn = lambda x, y: prepare_image(
+        image_path=x,
+        label=y,
+        image_size=image_size
+    )
+
+    # Si se solicita el uso de caché, las imágenes se preprocesan antes del shuffle
+    if use_cache:
+        if cache_name is None:
+            raise ValueError("Debe proporcionarse 'cache_name' cuando use_cache=True.")
+        
         dataset = dataset.map(
-            lambda x, y: prepare_image(
-                image_path=x,
-                label=y,
-                image_size=image_size
-            ),
-            num_parallel_calls=tf.data.AUTOTUNE # Hace que el proceso se ejecute en paralelo
+            map_func=map_fn,
+            num_parallel_calls=tf.data.AUTOTUNE # Ejecuta el proceso en paralelo
         )
 
         # Almacenar el dataset en caché (en disco), para evitar repetir
@@ -105,15 +110,11 @@ def create_dataset(images_dir, csv_file, image_size, split, batch=True, batch_si
             reshuffle_each_iteration=True
         )
 
-    # Si no se usa caché, las imágenes se mapean después del shuffle
+    # Si no se usa caché, las imágenes se preprocesan después del shuffle
     if not use_cache:
         dataset = dataset.map(
-            lambda x, y: prepare_image(
-                image_path=x,
-                label=y,
-                image_size=image_size
-            ),
-            num_parallel_calls=tf.data.AUTOTUNE
+            map_func=map_fn,
+            num_parallel_calls=tf.data.AUTOTUNE # Ejecuta el proceso en paralelo
         )
 
     # Agrupar los datos en lotes del tamaño especificado sólo si se solicita
@@ -121,7 +122,8 @@ def create_dataset(images_dir, csv_file, image_size, split, batch=True, batch_si
         dataset = dataset.batch(batch_size)
 
     # Precargar el siguiente lote en memoria (CPU) mientras la GPU/CPU entrena el lote actual
-    dataset = dataset.prefetch(tf.data.AUTOTUNE)
+    if prefetch:
+        dataset = dataset.prefetch(tf.data.AUTOTUNE)
 
     return dataset
 
@@ -154,36 +156,43 @@ def get_dataset_splits(image_size, upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_C
              - val_ds (tf.data.Dataset): Conjunto de datos de validación.
              - test_ds (tf.data.Dataset): Conjunto de datos de prueba.
     """
+    # Leer los archivos CSV
+    df_upp = pd.read_csv(upp_csv_file)
+    df_piid = pd.read_csv(piid_csv_file)
+
     # Cargar el dataset principal
     train_ds = create_dataset(
         images_dir=upp_imgs_dir,
-        csv_file=upp_csv_file,
+        df=df_upp,
         image_size=image_size,
         split="train",
         batch=True,
         batch_size=batch_size,
+        prefetch=True,
         use_cache=use_cache,
         cache_name=f"upp_train_{image_size[0]}x{image_size[1]}"
     )
 
     val_ds = create_dataset(
         images_dir=upp_imgs_dir,
-        csv_file=upp_csv_file,
+        df=df_upp,
         image_size=image_size,
         split="val",
         batch=True,
         batch_size=batch_size,
+        prefetch=True,
         use_cache=use_cache,
         cache_name=f"upp_val_{image_size[0]}x{image_size[1]}"
     )
 
     test_ds = create_dataset(
         images_dir=upp_imgs_dir,
-        csv_file=upp_csv_file,
+        df=df_upp,
         image_size=image_size,
         split="test",
         batch=False,
         batch_size=batch_size,
+        prefetch=False,
         use_cache=use_cache,
         cache_name=f"upp_test_{image_size[0]}x{image_size[1]}"
     )
@@ -191,11 +200,12 @@ def get_dataset_splits(image_size, upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_C
     # Cargar los datos de PIID y concatenarlos a test_ds
     piid_test_ds = create_dataset(
         images_dir=piid_imgs_dir,
-        csv_file=piid_csv_file,
+        df=df_piid,
         image_size=image_size,
         split="test",
         batch=False,
         batch_size=batch_size,
+        prefetch=False,
         use_cache=use_cache,
         cache_name=f"piid_test_{image_size[0]}x{image_size[1]}"
     )
