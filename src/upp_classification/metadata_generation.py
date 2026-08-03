@@ -53,7 +53,7 @@ def generate_piid_metadata(imgs_dir=PIID_IMGS_DIR, csv_output_path=PIID_CSV_FILE
     return df_piid
 
 
-def generate_upp_metadata(imgs_dir=UPP_IMGS_DIR, csv_output_path=UPP_CSV_FILE, seed=SEED):
+def generate_upp_metadata(imgs_dir=UPP_IMGS_DIR, csv_output_path=UPP_CSV_FILE):
     """
     Lee las imágenes de UPP, extrae sus metadatos y realiza la partición train/val/test.
     
@@ -73,8 +73,6 @@ def generate_upp_metadata(imgs_dir=UPP_IMGS_DIR, csv_output_path=UPP_CSV_FILE, s
                                        Por defecto es UPP_IMGS_DIR.
     - csv_output_path (str o Path, optional): Ruta donde se guardará el archivo CSV con los metadatos 
                                               de las imágenes. Por defecto es UPP_CSV_FILE.
-    - seed (int, optional): Semilla para garantizar la reproducibilidad de la partición de datos. 
-                            Por defecto es SEED.
 
     Returns:
     - pd.DataFrame: DataFrame con los metadatos generados y las particiones asignadas.
@@ -129,7 +127,7 @@ def generate_upp_metadata(imgs_dir=UPP_IMGS_DIR, csv_output_path=UPP_CSV_FILE, s
 
     # Objeto para realizar StratifiedGroupKFold
     # Los datos se dividen en 5 folds (grupos) de pacientes, con una distribución similar de las clases
-    sgkf = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=seed)
+    sgkf = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=SEED)
 
     # Obtiene la primera partición generada por por StratifiedGroupKFold
     # train_idx contiene los índices de las filas de train (4 folds)
