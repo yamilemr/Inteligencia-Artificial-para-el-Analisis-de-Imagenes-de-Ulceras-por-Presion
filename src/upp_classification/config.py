@@ -46,10 +46,6 @@ REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 FIGURES_DIR = REPORTS_DIR / "figures"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
-# Configuración de las imágenes
-IMAGE_SIZE = (224, 224)
-INPUT_SHAPE = (*IMAGE_SIZE, 3)
-
 # Hiperparámetros
 EPOCHS = 100
 
@@ -82,7 +78,12 @@ CLASS_NAMES = [value["name"] for value in CLASS_LABELS.values()]
 NUM_CLASSES = len(CLASS_LABELS)
 
 # Arquitecturas disponibles para transfer learning
-AVAILABLE_MODELS = ["ResNet50V2", "InceptionResNetV2", "DenseNet121", "ConvNeXtTiny"]
+AVAILABLE_MODELS = {
+    "ResNet50V2": {"image_size": (224, 224)},
+    "InceptionResNetV2": {"image_size": (299, 299)},
+    "DenseNet121": {"image_size": (224, 224)},
+    "ConvNeXtTiny": {"image_size": (224, 224)}
+}
 
 # Diccionario con el espacio de búsqueda común a todas las arquitecturas
 BASE_SEARCH_SPACE = {

@@ -2,18 +2,16 @@ import numpy as np
 import tensorflow as tf
 from pathlib import Path
 from upp_classification.data_loader import prepare_image
-from upp_classification.config import IMAGE_SIZE, CLASS_NAMES
+from upp_classification.config import CLASS_NAMES
 
 
-def predict_single_image(model, image_path, image_size=IMAGE_SIZE):
+def predict_single_image(model, image_path):
     """
     Realiza la predicción para una sola imagen utilizando un modelo entrenado.
 
     Args:
     - model (keras.Model): Modelo entrenado (con el preprocesamiento integrado).
     - image_path (str o Path): Ruta de la imagen a predecir.
-    - image_size (tuple, optional): Tamaño para redimensionar la imagen (alto, ancho). 
-                                    Por defecto es IMAGE_SIZE.
 
     Returns:
     - dict: Diccionario con los resultados de la inferencia:
@@ -29,8 +27,11 @@ def predict_single_image(model, image_path, image_size=IMAGE_SIZE):
     if not image_path.exists():
         raise FileNotFoundError(f"No se encontró la imagen en la ruta: {image_path}")
 
+    # Extraer el tamaño de la imagen directamente de la entrada del modelo
+    image_size = model.input_shape[1:3]
+
     # Leer la imagen, decodificarla, redimensionarla y convertir a float32
-    image = prepare_image(image_path=str(image_path), label=None, image_size=image_size)
+    image = prepare_image(image_path=str(image_path), image_size=image_size, label=None)
     
     # Agregar la dimensión del batch (1, H, W, C)
     image = tf.expand_dims(image, axis=0)

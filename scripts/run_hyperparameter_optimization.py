@@ -53,7 +53,7 @@ def parse_args():
     parser.add_argument(
         "--model",
         required=True,
-        choices=AVAILABLE_MODELS,
+        choices=list(AVAILABLE_MODELS.keys()),
         help="Arquitectura de transfer learning."
     )
 
@@ -95,14 +95,18 @@ def main():
     # Configurar el experimento de MLflow
     setup_mlflow(experiment_name=args.experiment)
 
+    # Nombre del modelo
+    model_name = args.model
+
     # Obtener el modelo base y la función de preprocesamiento seleccionadas
-    base_model_fn, preprocess_fn = MODELS[args.model]
+    base_model_fn, preprocess_fn = MODELS[model_name]
 
     # Ejecutar la búsqueda de hiperparámetros
     study = run_hyperparameter_search(
         base_model_fn=base_model_fn,
         preprocess_fn=preprocess_fn,
-        search_space=SEARCH_SPACES[args.model],
+        search_space=SEARCH_SPACES[model_name],
+        image_size=AVAILABLE_MODELS[model_name]["image_size"],
         n_trials=args.trials,
         use_cache=args.cache
     )

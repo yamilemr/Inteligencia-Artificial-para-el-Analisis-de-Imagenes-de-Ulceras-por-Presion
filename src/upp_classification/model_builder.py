@@ -1,9 +1,9 @@
 import tensorflow as tf
 from tensorflow.keras import layers, models
-from upp_classification.config import INPUT_SHAPE, NUM_CLASSES
+from upp_classification.config import NUM_CLASSES
 
 
-def build_model(params, base_model_fn, preprocess_fn=None, input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, use_augmentation=True):
+def build_model(params, base_model_fn, input_shape, preprocess_fn=None, num_classes=NUM_CLASSES, use_augmentation=True):
     """
     Construye y compila un modelo de clasificación con transfer learning, utilizando un 
     diccionario con hiperparámetros.
@@ -22,9 +22,9 @@ def build_model(params, base_model_fn, preprocess_fn=None, input_shape=INPUT_SHA
                      - weight_decay (float): Decaimiento de pesos (sólo para AdamW).
     - base_model_fn (callable): Función constructora del modelo base de Keras.
                                 (ej. tensorflow.keras.applications.ConvNeXtTiny).
+    - input_shape (tuple): Dimensiones del tensor de entrada (alto, ancho, canales).
     - preprocess_fn (callable, optional): Función de preprocesamiento específica del modelo de Keras. 
                                           Por defecto es None.
-    - input_shape (tuple, optional): Dimensiones del tensor de entrada. Por defecto es INPUT_SHAPE.
     - num_classes (int, optional): Número total de clases a predecir en la capa de salida. 
                                    Por defecto es NUM_CLASSES.
     - use_augmentation (bool, optional): Indica si se aplican capas de aumento de datos durante el 

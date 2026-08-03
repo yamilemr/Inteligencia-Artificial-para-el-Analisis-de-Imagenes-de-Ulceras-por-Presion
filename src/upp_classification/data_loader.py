@@ -3,17 +3,17 @@ import pandas as pd
 import tensorflow as tf
 from pathlib import Path
 from sklearn.utils.class_weight import compute_class_weight
-from upp_classification.config import UPP_IMGS_DIR, UPP_CSV_FILE, PIID_IMGS_DIR, PIID_CSV_FILE, LABEL_MAP, IMAGE_SIZE, CACHE_DIR, SEED
+from upp_classification.config import UPP_IMGS_DIR, UPP_CSV_FILE, PIID_IMGS_DIR, PIID_CSV_FILE, LABEL_MAP, CACHE_DIR, SEED
 
 
-def prepare_image(image_path, label=None, image_size=IMAGE_SIZE):
+def prepare_image(image_path, image_size, label=None):
     """
     Lee una imagen JPEG, la redimensiona y convierte sus valores a punto flotante.
 
     Args:
     - image_path (str o tf.Tensor): Ruta absoluta o relativa de la imagen (como cadena de texto o tensor).
+    - image_size (tuple): Tamaño para redimensionar la imagen (alto, ancho).
     - label (int o tf.Tensor, optional): Etiqueta entera correspondiente a la imagen. Por defecto es None.
-    - image_size (tuple, optional): Tamaño para redimensionar la imagen (alto, ancho). Por defecto es IMAGE_SIZE.
 
     Returns:
     - tf.Tensor o tuple: 
@@ -40,7 +40,7 @@ def prepare_image(image_path, label=None, image_size=IMAGE_SIZE):
     return image
 
 
-def create_dataset(images_dir, csv_file, split, batch=True, batch_size=32, image_size=IMAGE_SIZE, use_cache=False, cache_name=None):
+def create_dataset(images_dir, csv_file, image_size, split, batch=True, batch_size=32, use_cache=False, cache_name=None):
     """
     Crea un tf.data.Dataset para train, val o test.
 
@@ -48,11 +48,10 @@ def create_dataset(images_dir, csv_file, split, batch=True, batch_size=32, image
     - images_dir (str o Path): Ruta de la carpeta en la que se encuentran las imágenes.
     - csv_file (str): Ruta del archivo CSV que contiene los metadatos de las imágenes. 
                       Debe contener las columnas 'filename', 'label' y 'split'.
+    - image_size (tuple): Tamaño para redimensionar las imágenes (alto, ancho).
     - split (str): Partición de los datos a cargar ('train', 'val' o 'test').
     - batch (bool, optional): Si es True, agrupa las muestras en lotes. Por defecto es True.
     - batch_size (int, optional): Número de muestras procesadas por lote. Por defecto es 32.
-    - image_size (tuple, optional): Tamaño para redimensionar las imágenes (alto, ancho). 
-                                    Por defecto es IMAGE_SIZE.
     - use_cache (bool, optional): Si es True, almacena las imágenes preprocesadas en disco 
                                   para acelerar el entrenamiento en épocas posteriores. 
                                   Por defecto es False.
@@ -115,13 +114,14 @@ def create_dataset(images_dir, csv_file, split, batch=True, batch_size=32, image
     return dataset
 
 
-def get_dataset_splits(upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE, 
+def get_dataset_splits(image_size, upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE, 
                        piid_imgs_dir=PIID_IMGS_DIR, piid_csv_file=PIID_CSV_FILE, 
-                       batch_size=32, image_size=IMAGE_SIZE, use_cache=False):
+                       batch_size=32, use_cache=False):
     """
     Carga y genera los conjuntos de datos de entrenamiento, validación y prueba.
 
     Args:
+    - image_size (tuple): Tamaño para redimensionar las imágenes (alto, ancho).
     - upp_imgs_dir (str o Path, optional): Ruta de la carpeta que contiene las imágenes del dataset principal.
                                            Por defecto es UPP_IMGS_DIR.
     - upp_csv_file (str, optional): Ruta del archivo CSV que contiene los metadatos de las imágenes del dataset
@@ -133,7 +133,6 @@ def get_dataset_splits(upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE,
                                      PIID. Debe contener las columnas 'filename', 'label' y 'split'. 
                                      Por defecto es PIID_CSV_FILE.
     - batch_size (int, optional): Número de muestras procesadas por lote. Por defecto es 32.
-    - image_size (tuple, optional): Tamaño para redimensionar las imágenes (alto, ancho). Por defecto es IMAGE_SIZE.
     - use_cache (bool, optional): Si es True, habilita el guardado en caché en disco para acelerar la carga y
                                   procesamiento de los datos. Por defecto es False.
 
@@ -147,10 +146,10 @@ def get_dataset_splits(upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE,
     train_ds = create_dataset(
         images_dir=upp_imgs_dir,
         csv_file=upp_csv_file,
+        image_size=image_size,
         split="train",
         batch=True,
         batch_size=batch_size,
-        image_size=image_size,
         use_cache=use_cache,
         cache_name=f"upp_train_{image_size[0]}x{image_size[1]}"
     )
@@ -158,10 +157,10 @@ def get_dataset_splits(upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE,
     val_ds = create_dataset(
         images_dir=upp_imgs_dir,
         csv_file=upp_csv_file,
+        image_size=image_size,
         split="val",
         batch=True,
         batch_size=batch_size,
-        image_size=image_size,
         use_cache=use_cache,
         cache_name=f"upp_val_{image_size[0]}x{image_size[1]}"
     )
@@ -169,10 +168,10 @@ def get_dataset_splits(upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE,
     test_ds = create_dataset(
         images_dir=upp_imgs_dir,
         csv_file=upp_csv_file,
+        image_size=image_size,
         split="test",
         batch=False,
         batch_size=batch_size,
-        image_size=image_size,
         use_cache=use_cache,
         cache_name=f"upp_test_{image_size[0]}x{image_size[1]}"
     )
@@ -181,10 +180,10 @@ def get_dataset_splits(upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE,
     piid_test_ds = create_dataset(
         images_dir=piid_imgs_dir,
         csv_file=piid_csv_file,
+        image_size=image_size,
         split="test",
         batch=False,
         batch_size=batch_size,
-        image_size=image_size,
         use_cache=use_cache,
         cache_name=f"piid_test_{image_size[0]}x{image_size[1]}"
     )

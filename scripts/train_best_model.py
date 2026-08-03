@@ -54,7 +54,7 @@ def parse_args():
     parser.add_argument(
         "--model",
         required=True,
-        choices=AVAILABLE_MODELS,
+        choices=list(AVAILABLE_MODELS.keys()),
         help="Arquitectura de transfer learning."
     )
     
@@ -84,6 +84,9 @@ def main():
     # Nombre del modelo
     model_name = args.model
 
+    # Tamaño para redimensionar las imágenes según el modelo
+    image_size = AVAILABLE_MODELS[model_name]["image_size"]
+
     # Cargar el estudio de Optuna
     study_name = f"optimization_{model_name}"
     storage_uri = f"sqlite:///{OPTUNA_DIR / f'{model_name}.db'}"
@@ -112,7 +115,10 @@ def main():
         log_params_to_mlflow(params=best_params)
         
         # Cargar los datasets y los pesos balanceados de las clases
-        train_ds, val_ds, test_ds = get_dataset_splits(batch_size=best_params["batch_size"])
+        train_ds, val_ds, test_ds = get_dataset_splits(
+            image_size=image_size, 
+            batch_size=best_params["batch_size"]
+        )
         class_weights = get_class_weights()
         
         # Construir el modelo
@@ -121,6 +127,7 @@ def main():
             params=best_params,
             base_model_fn=base_model_fn,
             preprocess_fn=preprocess_fn,
+            input_shape=(*image_size, 3),
             use_augmentation=True
         )
         

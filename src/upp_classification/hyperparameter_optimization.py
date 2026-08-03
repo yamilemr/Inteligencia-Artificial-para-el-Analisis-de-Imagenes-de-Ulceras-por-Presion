@@ -85,7 +85,7 @@ def suggest_hyperparameters(trial, search_space):
     return params
 
 
-def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights, use_cache=False):
+def objective(trial, base_model_fn, preprocess_fn, search_space, image_size, class_weights, use_cache=False):
     """
     Función objetivo utilizada por Optuna para evaluar una configuración concreta de hiperparámetros.
 
@@ -97,6 +97,7 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights, 
     - preprocess_fn (callable): Función de preprocesamiento asociada al modelo base.
                                 (ej. convnext.preprocess_input).
     - search_space (dict): Diccionario que define el espacio de búsqueda de cada hiperparámetro.
+    - image_size (tuple): Tamaño para redimensionar las imágenes (alto, ancho).
     - class_weights (dict): Diccionario con los pesos balanceados de cada clase, calculados a partir 
                             del conjunto de entrenamiento.
     - use_cache (bool, optional): Si es True, habilita el uso de caché en disco para acelerar
@@ -137,6 +138,7 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights, 
         try:
             # Cargar los datasets con el batch_size seleccionado por Optuna
             train_ds, val_ds, _ = get_dataset_splits(
+                image_size=image_size,
                 batch_size=params["batch_size"],
                 use_cache=use_cache
             )
@@ -146,6 +148,7 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights, 
                 params=params, 
                 base_model_fn=base_model_fn,
                 preprocess_fn=preprocess_fn,
+                input_shape=(*image_size, 3),
                 use_augmentation=True
             )
 
@@ -193,7 +196,7 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, class_weights, 
             raise
 
 
-def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, n_trials=60, optuna_dir=OPTUNA_DIR, use_cache=False):
+def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, image_size, n_trials=60, optuna_dir=OPTUNA_DIR, use_cache=False):
     """
     Ejecuta la búsqueda de hiperparámetros utilizando Optuna.
 
@@ -203,6 +206,7 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, n_tria
     - preprocess_fn (callable): Función de preprocesamiento asociada al modelo base.
                                 (ej. convnext.preprocess_input).
     - search_space (dict): Diccionario que define el espacio de búsqueda de cada hiperparámetro.
+    - image_size (tuple): Tamaño para redimensionar las imágenes (alto, ancho).
     - n_trials (int, optional): Número total de configuraciones de hiperparámetros que se desea
                                 evaluar. Si el estudio ya existe, únicamente se ejecutarán los
                                 trials faltantes para alcanzar este número. Por defecto es 60.
@@ -261,6 +265,7 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, n_tria
                 base_model_fn=base_model_fn, 
                 preprocess_fn=preprocess_fn,
                 search_space=search_space,
+                image_size=image_size,
                 class_weights=class_weights,
                 use_cache=use_cache
             ),
