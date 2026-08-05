@@ -1,5 +1,7 @@
+import gc
 import mlflow
 import optuna
+from tensorflow.keras import backend as K
 from optuna_integration.tfkeras import TFKerasPruningCallback
 from upp_classification.mlflow_tracking import generate_run_name, log_params_to_mlflow
 from upp_classification.data_loader import get_dataset_splits, get_class_weights
@@ -194,6 +196,21 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, image_size, cla
             mlflow.set_tag("status", "failed")
             mlflow.set_tag("error", str(e))
             raise
+
+        finally:
+            # Eliminar la referencia al modelo entrenado
+            if 'model' in locals():
+                del model
+
+            # Eliminar los pipelines de datos para vaciar el búfer de prefetch
+            if 'train_ds' in locals():
+                del train_ds
+            if 'val_ds' in locals():
+                del val_ds
+
+            # Forzar la liberación de memoria RAM/VRAM al terminar el trial
+            K.clear_session()
+            gc.collect()
 
 
 def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, image_size, n_trials=60, optuna_dir=OPTUNA_DIR, use_cache=False):
