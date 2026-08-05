@@ -83,7 +83,7 @@ def main():
 
     La función procesa los argumentos de entrada, recupera los mejores hiperparámetros desde
     la base de datos de Optuna, ejecuta el entrenamiento del modelo, lo evalúa en todos los
-    conjuntos de datos y finalmente lo registra en MLflow y lo guarda y guarda de forma local.
+    conjuntos de datos y finalmente lo registra en MLflow y lo guarda de forma local.
 
     Returns:
     - None
@@ -128,7 +128,8 @@ def main():
         train_ds, val_ds, test_ds = get_dataset_splits(
             image_size=image_size, 
             batch_size=best_params["batch_size"],
-            use_cache=args.cache
+            use_cache=args.cache,
+            include_test=True
         )
         class_weights = get_class_weights()
         

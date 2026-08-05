@@ -139,10 +139,11 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, image_size, cla
 
         try:
             # Cargar los datasets con el batch_size seleccionado por Optuna
-            train_ds, val_ds, _ = get_dataset_splits(
+            train_ds, val_ds = get_dataset_splits(
                 image_size=image_size,
                 batch_size=params["batch_size"],
-                use_cache=use_cache
+                use_cache=use_cache,
+                include_test=False
             )
             
             # Construir el modelo con los hiperparámetros seleccionados

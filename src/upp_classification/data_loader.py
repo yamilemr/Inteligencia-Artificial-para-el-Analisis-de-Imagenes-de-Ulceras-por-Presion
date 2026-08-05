@@ -130,7 +130,7 @@ def create_dataset(images_dir, df, image_size, split, batch=True, batch_size=32,
 
 def get_dataset_splits(image_size, upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_CSV_FILE, 
                        piid_imgs_dir=PIID_IMGS_DIR, piid_csv_file=PIID_CSV_FILE, 
-                       batch_size=32, use_cache=False):
+                       batch_size=32, use_cache=False, include_test=True):
     """
     Carga y genera los conjuntos de datos de entrenamiento, validación y prueba.
 
@@ -149,18 +149,20 @@ def get_dataset_splits(image_size, upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_C
     - batch_size (int, optional): Número de muestras procesadas por lote. Por defecto es 32.
     - use_cache (bool, optional): Si es True, habilita el guardado en caché en disco para acelerar la carga y
                                   procesamiento de los datos. Por defecto es False.
+    - include_test (bool, optional): Indica si se debe construir y retornar el conjunto de datos de prueba.
+                                     Por defecto es True.
 
     Returns:
     - tuple: Una tupla que contiene:
              - train_ds (tf.data.Dataset): Conjunto de datos de entrenamiento.
              - val_ds (tf.data.Dataset): Conjunto de datos de validación.
-             - test_ds (tf.data.Dataset): Conjunto de datos de prueba.
+             - test_ds (tf.data.Dataset, optional): Conjunto de datos de prueba (se incluye si include_test=True).
     """
     # Leer los archivos CSV
     df_upp = pd.read_csv(upp_csv_file)
     df_piid = pd.read_csv(piid_csv_file)
 
-    # Cargar el dataset principal
+    # Cargar el dataset de entrenamiento
     train_ds = create_dataset(
         images_dir=upp_imgs_dir,
         df=df_upp,
@@ -173,6 +175,7 @@ def get_dataset_splits(image_size, upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_C
         cache_name=f"upp_train_{image_size[0]}x{image_size[1]}"
     )
 
+    # Cargar el dataset de validación
     val_ds = create_dataset(
         images_dir=upp_imgs_dir,
         df=df_upp,
@@ -185,6 +188,11 @@ def get_dataset_splits(image_size, upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_C
         cache_name=f"upp_val_{image_size[0]}x{image_size[1]}"
     )
 
+    # Omitir la construcción del conjunto de prueba si no es requerido
+    if not include_test:
+        return train_ds, val_ds
+
+    # Cargar los datos de prueba del dataset principal
     test_ds = create_dataset(
         images_dir=upp_imgs_dir,
         df=df_upp,
@@ -197,7 +205,7 @@ def get_dataset_splits(image_size, upp_imgs_dir=UPP_IMGS_DIR, upp_csv_file=UPP_C
         cache_name=f"upp_test_{image_size[0]}x{image_size[1]}"
     )
 
-    # Cargar los datos de PIID y concatenarlos a test_ds
+    # Cargar los datos de prueba de PIID
     piid_test_ds = create_dataset(
         images_dir=piid_imgs_dir,
         df=df_piid,
