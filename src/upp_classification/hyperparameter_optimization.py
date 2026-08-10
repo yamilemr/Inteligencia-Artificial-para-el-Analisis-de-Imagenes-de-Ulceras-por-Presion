@@ -20,55 +20,73 @@ def suggest_hyperparameters(trial, search_space):
     - trial (optuna.trial.Trial): Objeto de Optuna utilizado para sugerir valores de 
                                   hiperparámetros dentro del espacio de búsqueda definido.
     - search_space (dict): Diccionario que define el espacio de búsqueda de cada hiperparámetro.
-                           Por ejemplo:
-                           search_space = {
-                               "dense_layers": {"low": 0, "high": 2},
-                               "dense_units": [32, 64, 128, 256],
-                               "dropout_rate": {"low": 0.2, "high": 0.5, "step": 0.1},
-                               "optimizer_params": {
-                                   "Adam": {
-                                       "learning_rate": {"low": 1e-5, "high": 1e-3, "log": True}
-                                   },
-                                   "AdamW": {
-                                       "learning_rate": {"low": 1e-5, "high": 1e-3, "log": True},
-                                       "weight_decay": {"low": 1e-7, "high": 1e-2, "log": True}
-                                   }
-                               },
-                               "batch_size": [16, 32]
-                           }
+                           Los espacios de búsqueda están definidos en el archivo config.py.
 
     Returns:
     - dict: Diccionario con los hiperparámetros seleccionados para el trial actual.
+            - conv_layers (int, optional): Número de capas convolucionales. 
+            - filters (list[int], optional): Número de filtros por cada capa convolucional. 
+            - kernel_size (int, optional): Tamaño del kernel de las convoluciones. 
+            - strides (int, optional): Tamaño del stride utilizado en las convoluciones.
             - dense_layers (int): Número de capas densas.
             - dense_units (list[int]): Número de neuronas por capa densa.
             - dropout_rate (float): Tasa de dropout aplicada antes de la capa de salida.
             - optimizer (str): Optimizador.
             - learning_rate (float): Tasa de aprendizaje del optimizador.
             - weight_decay (float): Decaimiento de pesos para AdamW.
-            - batch_size (int): Tamaño de batch.
+            - batch_size (int): Tamaño de lote.
     """
-    params = {
-        "dense_layers": trial.suggest_int(
-            name="dense_layers", 
-            low=search_space["dense_layers"]["low"],
-            high=search_space["dense_layers"]["high"]
-        ),
-        "dropout_rate": trial.suggest_float(
-            name="dropout_rate", 
-            low=search_space["dropout_rate"]["low"],
-            high=search_space["dropout_rate"]["high"],
-            step=search_space["dropout_rate"]["step"]
-        ),
-        "optimizer": trial.suggest_categorical(name="optimizer", choices=list(search_space["optimizer_params"].keys())),
-        "batch_size":  trial.suggest_categorical(name="batch_size", choices=search_space["batch_size"])
-    }
+    params = {}
+
+    if "conv_layers" in search_space:
+        # Número de capas convolucionales
+        params["conv_layers"] = trial.suggest_int(
+            name="conv_layers", 
+            low=search_space["conv_layers"]["low"], 
+            high=search_space["conv_layers"]["high"]
+        )
+
+        # Número de filtros en cada capa convolucional
+        params["filters"] = []
+        for i in range(params["conv_layers"]):
+            # Se crea un hiperparámetro independiente por cada conv_layer (filters_layer_1, filters_layer_2, ...)
+            filters = trial.suggest_categorical(name=f"filters_layer_{i+1}", choices=search_space["filters"])
+            params["filters"].append(filters)
+
+        # Tamaño de kernel
+        params["kernel_size"] = trial.suggest_categorical(name="kernel_size", choices=search_space["kernel_size"])
+
+        # Tamaño del stride utilizado en las convoluciones
+        params["strides"] = trial.suggest_int(
+            name="strides", 
+            low=search_space["strides"]["low"], 
+            high=search_space["strides"]["high"]
+        )
+
+    # Número de capas densas
+    params["dense_layers"] = trial.suggest_int(
+        name="dense_layers", 
+        low=search_space["dense_layers"]["low"],
+        high=search_space["dense_layers"]["high"]
+    )
 
     # Número de neuronas en cada capa densa
     params["dense_units"] = [] # Si dense_layers=0, la lista permanecerá vacía
     for i in range(params["dense_layers"]):
-        # Se crea un hiperparámetro independiente por cada capa densa  (dense_units_1, dense_units_2, ...)
+        # Se crea un hiperparámetro independiente por cada capa densa (dense_units_1, dense_units_2, ...)
         units = trial.suggest_categorical(name=f"dense_units_{i+1}", choices=search_space["dense_units"])
         params["dense_units"].append(units)
+
+    # Tasa de dropout
+    params["dropout_rate"] = trial.suggest_float(
+        name="dropout_rate", 
+        low=search_space["dropout_rate"]["low"],
+        high=search_space["dropout_rate"]["high"],
+        step=search_space["dropout_rate"]["step"]
+    )
+
+    # Optimizador
+    params["optimizer"] = trial.suggest_categorical(name="optimizer", choices=list(search_space["optimizer_params"].keys()))
     
     # Hiperparámetros para cada optimizador
     optimizer_params = search_space["optimizer_params"][params["optimizer"]]
@@ -84,26 +102,32 @@ def suggest_hyperparameters(trial, search_space):
         wd = optimizer_params["weight_decay"]
         params["weight_decay"] = trial.suggest_float(name="weight_decay", low=wd["low"], high=wd["high"], log=wd["log"])
 
+    # Tamaño de lote
+    params["batch_size"] = trial.suggest_categorical(name="batch_size", choices=search_space["batch_size"])
+
     return params
 
 
-def objective(trial, base_model_fn, preprocess_fn, search_space, image_size, class_weights, use_cache=False):
+def objective(trial, model_name, base_model_fn, preprocess_fn, search_space, image_size, class_weights, use_cache=False, use_augmentation=True):
     """
     Función objetivo utilizada por Optuna para evaluar una configuración concreta de hiperparámetros.
 
     Args:
     - trial (optuna.trial.Trial): Objeto de Optuna que gestiona la selección de hiperparámetros
                                   para la prueba actual.
+    - model_name (str): Nombre del modelo utilizado (ej. DenseNet121, CustomCNN).
     - base_model_fn (callable): Función constructora del modelo base utilizado en el entrenamiento.
-                                (ej. tensorflow.keras.applications.ConvNeXtTiny).
+                                (ej. tensorflow.keras.applications.DenseNet121).
     - preprocess_fn (callable): Función de preprocesamiento asociada al modelo base.
-                                (ej. convnext.preprocess_input).
+                                (ej. densenet.preprocess_input).
     - search_space (dict): Diccionario que define el espacio de búsqueda de cada hiperparámetro.
     - image_size (tuple): Tamaño para redimensionar las imágenes (alto, ancho).
     - class_weights (dict): Diccionario con los pesos balanceados de cada clase, calculados a partir 
                             del conjunto de entrenamiento.
     - use_cache (bool, optional): Si es True, habilita el uso de caché en disco para acelerar
                                   la carga y procesamiento de los datos. Por defecto es False.
+    - use_augmentation (bool, optional): Si es True, se usa aumento de datos durante el entrenamiento.
+                                         Por defecto es True.
 
     Returns:
     - float: Métrica objetivo que Optuna intenta minimizar (en este caso es val_loss).
@@ -118,7 +142,6 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, image_size, cla
     params = suggest_hyperparameters(trial=trial, search_space=search_space)
 
     # Generar el nombre del run de MLflow
-    model_name = base_model_fn.__name__
     run_name = generate_run_name(architecture_name=model_name, params=params)
 
     # Crear un run de MLflow asociado al trial actual de Optuna
@@ -132,10 +155,7 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, image_size, cla
         log_params_to_mlflow(params=params)
 
         # Callback para detener trials poco prometedores durante la optimización
-        pruning_callback = TFKerasPruningCallback(
-            trial=trial,
-            monitor="val_loss"
-        )
+        pruning_callback = TFKerasPruningCallback(trial=trial, monitor="val_loss")
 
         try:
             # Cargar los datasets con el batch_size seleccionado por Optuna
@@ -152,7 +172,7 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, image_size, cla
                 base_model_fn=base_model_fn,
                 preprocess_fn=preprocess_fn,
                 input_shape=(*image_size, 3),
-                use_augmentation=True
+                use_augmentation=use_augmentation
             )
 
             # Entrenar el modelo con la configuración actual
@@ -214,15 +234,16 @@ def objective(trial, base_model_fn, preprocess_fn, search_space, image_size, cla
             gc.collect()
 
 
-def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, image_size, n_trials=60, optuna_dir=OPTUNA_DIR, use_cache=False):
+def run_hyperparameter_search(model_name, base_model_fn, preprocess_fn, search_space, image_size, n_trials=60, optuna_dir=OPTUNA_DIR, use_cache=False, use_augmentation=True):
     """
     Ejecuta la búsqueda de hiperparámetros utilizando Optuna.
 
     Args:
+    - model_name (str): Nombre del modelo utilizado (ej. DenseNet121, CustomCNN).
     - base_model_fn (callable): Función constructora del modelo base utilizado en el entrenamiento.
-                                (ej. tensorflow.keras.applications.ConvNeXtTiny).
+                                (ej. tensorflow.keras.applications.DenseNet121).
     - preprocess_fn (callable): Función de preprocesamiento asociada al modelo base.
-                                (ej. convnext.preprocess_input).
+                                (ej. densenet.preprocess_input).
     - search_space (dict): Diccionario que define el espacio de búsqueda de cada hiperparámetro.
     - image_size (tuple): Tamaño para redimensionar las imágenes (alto, ancho).
     - n_trials (int, optional): Número total de configuraciones de hiperparámetros que se desea
@@ -232,6 +253,8 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, image_
                                          estudio de Optuna. Por defecto es OPTUNA_DIR.
     - use_cache (bool, optional): Si es True, habilita el uso de caché en disco para acelerar
                                   la carga y procesamiento de los datos. Por defecto es False.
+    - use_augmentation (bool, optional): Si es True, se usa aumento de datos durante el entrenamiento.
+                                         Por defecto es True.
     
     Returns:
     - optuna.study.Study: Objeto Study de Optuna con los resultados completos de la optimización.
@@ -241,9 +264,6 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, image_
                           - best_trial: mejor trial.
                           - trials: historial completo de pruebas.
     """
-    # Nombre de la arquitectura utilizada
-    model_name = base_model_fn.__name__
-
     # Obtener los pesos balanceados de las clases
     class_weights = get_class_weights()
 
@@ -280,12 +300,14 @@ def run_hyperparameter_search(base_model_fn, preprocess_fn, search_space, image_
         lambda trial:
             objective(
                 trial=trial, 
+                model_name=model_name,
                 base_model_fn=base_model_fn, 
                 preprocess_fn=preprocess_fn,
                 search_space=search_space,
                 image_size=image_size,
                 class_weights=class_weights,
-                use_cache=use_cache
+                use_cache=use_cache,
+                use_augmentation=use_augmentation
             ),
         n_trials=max(0, n_trials - completed_trials) # Ejecutar únicamente los trials faltantes para alcanzar n_trials
     )
@@ -316,6 +338,17 @@ def reconstruct_best_params(best_params):
     # Recuperar las neuronas por cada capa densa configurada
     for i in range(params["dense_layers"]):
         params["dense_units"].append(best_params[f"dense_units_{i+1}"])
+
+    # Hiperparámetros de las capas convolcionales (si existen)
+    if "conv_layers" in best_params:
+        params["conv_layers"] = best_params["conv_layers"]
+        params["kernel_size"] = best_params["kernel_size"]
+        params["strides"] = best_params["strides"]
+        params["filters"] = []
+
+        # Recuperar los filtros por cada capa convolcional configurada
+        for i in range(params["conv_layers"]):
+            params["filters"].append(best_params[f"filters_layer_{i+1}"])
         
     # Recuperar los parámetros específicos del optimizador
     if params["optimizer"] == "Adam":

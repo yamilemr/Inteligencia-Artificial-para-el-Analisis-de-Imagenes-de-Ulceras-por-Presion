@@ -5,9 +5,11 @@ y guarda el modelo final utilizando MLflow.
 Comandos de ejecución (desde la raíz del proyecto):
 
 - Ejecutar el entrenamiento del mejor modelo:
-    uv run python scripts/train_best_model.py --model ResNet50V2 --experiment upp_classification --cache
+    uv run python scripts/train_best_model.py --model ResNet50V2 --experiment upp_classification --cache --augmentation
 
-    Nota: En caso de que no se desee usar caché en disco para cargar las imágenes, se omite el parámetro --cache en el comando de ejecución.
+    Nota: 
+    - En caso de que no se desee usar caché en disco para cargar las imágenes, se omite el parámetro --cache en el comando de ejecución.
+    - En caso de que no se desee usar aumento de datos durante el entrenamiento, se omite el parámetro --augmentation en el comando de ejecución.
 
 - Abrir la interfaz de MLflow para visualizar los resultados:
     mlflow ui --backend-store-uri sqlite:///experiments/mlflow_tracking.db
@@ -38,7 +40,8 @@ MODELS = {
     "ResNet50V2": (ResNet50V2, resnet50v2_preprocess),
     "InceptionResNetV2": (InceptionResNetV2, inceptionresnetv2_preprocess),
     "DenseNet121": (DenseNet121, densenet121_preprocess),
-    "ConvNeXtTiny": (ConvNeXtTiny, convnexttiny_preprocess)
+    "ConvNeXtTiny": (ConvNeXtTiny, convnexttiny_preprocess),
+    "CustomCNN": (None, None)
 }
 
 
@@ -72,6 +75,12 @@ def parse_args():
         "--cache",
         action="store_true",
         help="Habilita el uso de caché en disco para acelerar la carga de imágenes."
+    )
+
+    parser.add_argument(
+        "--augmentation",
+        action="store_true",
+        help="Habilita el aumento de datos durante el entrenamiento."
     )
     
     return parser.parse_args()
@@ -140,7 +149,7 @@ def main():
             base_model_fn=base_model_fn,
             preprocess_fn=preprocess_fn,
             input_shape=(*image_size, 3),
-            use_augmentation=True
+            use_augmentation=args.augmentation
         )
         
         # Entrenar el modelo

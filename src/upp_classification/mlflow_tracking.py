@@ -45,13 +45,17 @@ def generate_run_name(architecture_name, params):
     utilizados durante el entrenamiento.
 
     El nombre sigue el formato:
-    ConvNeXtTiny | dl:2, du1:32, du2:64, dr:0.2, opt:Adam, lr:1e-4, bs:32
-    ConvNeXtTiny | dl:2, du1:32, du2:64, dr:0.2, opt:AdamW, lr:1e-4, wd:1e-6, bs:32
+    CustomCNN | cl:2, fl1:32, fl2:64, ks:3, st:2, dl:2, du1:32, du2:64, dr:0.2, opt:Adam, lr:1e-4, bs:32
+    DenseNet121 | dl:2, du1:32, du2:64, dr:0.2, opt:AdamW, lr:1e-4, wd:1e-6, bs:32
 
     Args:
-    - architecture_name (str): Nombre de la arquitectura utilizada (ej. ConvNeXtTiny).
+    - architecture_name (str): Nombre de la arquitectura utilizada (ej. DenseNet121).
     - params (dict): Diccionario con los hiperparámetros seleccionados para el entrenamiento.
                      Debe contener:
+                     - conv_layers (int, optional): Número de capas convolucionales. 
+                     - filters (list[int], optional): Número de filtros por cada capa convolucional. 
+                     - kernel_size (int, optional): Tamaño del kernel de las convoluciones. 
+                     - strides (int, optional): Tamaño del stride utilizado en las convoluciones.
                      - dense_layers (int): Número de capas densas.
                      - dense_units (list[int]): Número de neuronas por capa densa.
                      - dropout_rate (float): Tasa de dropout aplicada después de cada capa densa
@@ -66,6 +70,20 @@ def generate_run_name(architecture_name, params):
     - str: Nombre descriptivo del run para su registro en MLflow.
     """
     hyperparams = []
+
+    if "conv_layers" in params:
+        # Número de capas convolucionales
+        hyperparams.append(f"cl:{params['conv_layers']}")
+
+        # Número de filtros en cada capa convolucional
+        for i, filt in enumerate(params["filters"]):
+            hyperparams.append(f"fl{i+1}:{filt}")
+
+        # Tamaño de kernel
+        hyperparams.append(f"ks:{params['kernel_size']}")
+
+        # Tamaño del stride utilizado en las convoluciones
+        hyperparams.append(f"st:{params['strides']}")
     
     # Número de capas densas
     dense_layers = params["dense_layers"]
@@ -83,14 +101,14 @@ def generate_run_name(architecture_name, params):
     optimizer = params["optimizer"]
     hyperparams.append(f"opt:{optimizer}")
 
-    # Learning rate
+    # Tasa de aprendizaje
     hyperparams.append(f"lr:{params['learning_rate']}")
     
     # Se agrega weight_decay sólo para AdamW
     if optimizer == "AdamW":
         hyperparams.append(f"wd:{params['weight_decay']}")
             
-    # Batch size
+    # Tamaño de lote
     hyperparams.append(f"bs:{params['batch_size']}")
 
     # Se crea el run_name con el formato especificado
@@ -110,6 +128,13 @@ def log_params_to_mlflow(params):
     - None: La función registra los hiperparámetros en el run activo de MLflow.
     """
     params_mlflow = params.copy()
+
+    # Expandir la lista filters en parámetros individuales (filters_layer_1, filters_layer_2)
+    if "filters" in params_mlflow:
+        filters = params_mlflow.pop("filters")
+
+        for i, filt in enumerate(filters):
+            params_mlflow[f"filters_layer_{i+1}"] = filt
 
     # Expandir la lista dense_units en parámetros individuales (dense_units_1, dense_units_2)
     if "dense_units" in params_mlflow:
@@ -218,7 +243,7 @@ def log_and_save_model(model, architecture_name, models_dir=MODELS_DIR):
 
     Args:
     - model (keras.Model): Modelo entrenado a guardar.
-    - architecture_name (str): Nombre de la arquitectura (ej. ConvNeXtTiny).
+    - architecture_name (str): Nombre de la arquitectura (ej. DenseNet121).
     - models_dir (Path, optional): Ruta al directorio para guardar el modelo. 
                                    Por defecto es MODELS_DIR.
 
