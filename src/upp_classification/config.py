@@ -83,7 +83,7 @@ AVAILABLE_MODELS = {
     "InceptionResNetV2": {"image_size": (299, 299)},
     "DenseNet121": {"image_size": (224, 224)},
     "ConvNeXtTiny": {"image_size": (224, 224)},
-    "CustomCNN": {"image_size": (720, 720)}
+    "CustomCNN": {"image_size": (420, 420)}
 }
 
 # Diccionario con el espacio de búsqueda común a todas las arquitecturas preentrenadas
@@ -128,8 +128,8 @@ SEARCH_SPACES = {
         "conv_layers": {"low": 1, "high": 3},
         "filters": [16, 32, 64, 128],
         "kernel_size": [3, 5],
-        "strides": {"low": 1, "high": 3},
-        "dense_layers": {"low": 1, "high": 3},
+        "strides": {"low": 1, "high": 2},
+        "dense_layers": {"low": 0, "high": 2},
         "dense_units": [32, 64, 128],
         "dropout_rate": {"low": 0.3, "high": 0.5, "step": 0.1},
         "optimizer_params": {
@@ -138,7 +138,7 @@ SEARCH_SPACES = {
             },
             "AdamW": {
                 "learning_rate": {"low": 1e-5, "high": 1e-3, "log": True},
-                "weight_decay": {"low": 1e-7, "high": 1e-2, "log": True}
+                "weight_decay": {"low": 1e-6, "high": 1e-3, "log": True}
             }
         },
         "batch_size": [16, 32]
