@@ -123,7 +123,7 @@ def main():
     )
 
     # Mostrar un resumen de los resultados obtenidos
-    print(f"\nArquitectura: {base_model_fn.__name__}")
+    print(f"\nArquitectura: {model_name}")
 
     print(f"\nMejor trial: {study.best_trial.number}")
     print(f"Menor val_loss alcanzado: {study.best_value}")
