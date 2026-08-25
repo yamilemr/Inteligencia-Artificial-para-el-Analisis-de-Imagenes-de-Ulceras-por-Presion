@@ -183,7 +183,7 @@ def plot_dataset_distribution(upp_csv_file=UPP_CSV_FILE, piid_csv_file=PIID_CSV_
     df_upp = pd.read_csv(upp_csv_file)
     df_piid = pd.read_csv(piid_csv_file)
 
-    # Alinear columnas faltantes en PIID para poder concatenar ambos datasets
+    # Agregar columnas faltantes en PIID para poder concatenar ambos datasets
     df_piid["patient_id"] = None
     df_piid["lesion_id"] = None
     df_all = pd.concat([df_upp, df_piid], ignore_index=True)
@@ -213,20 +213,39 @@ def plot_dataset_distribution(upp_csv_file=UPP_CSV_FILE, piid_csv_file=PIID_CSV_
     counts.columns = [f"{col} ({split_totals[col]} imgs)" for col in counts.columns]
 
     # Graficar
-    ax = counts.plot(kind="bar", figsize=(7, 4), width=0.7, color=["#8c74b5", "#95a8cf", "#b6cee4"])
-    
-    ax.set_xlabel("")
-    ax.set_title("Distribución de imágenes por clase y split")
+    ax = counts.plot(kind="bar", figsize=(7.5, 4), width=0.7, color=["#b6cee4", "#95c8cf", "#d2ddbf"]) 
+    fig = ax.get_figure()
 
+    # Título y etiquetas de los ejes
+    ax.set_xlabel("")
+    ax.set_ylabel("Número de imágenes", labelpad=8, color="#3d3d3d")
+    ax.set_title("Distribución de imágenes por clase y partición", fontweight="bold", pad=15, color="#3d3d3d") 
+
+    # Configurar los bordes de la gráfica
     ax.spines["top"].set_visible(False)
+    ax.spines["left"].set_visible(False)
     ax.spines["right"].set_visible(False)
+    ax.spines["bottom"].set_color("#9B9B9B")
+
+    # Configurar el estilo de los ejes
+    ax.tick_params(axis="x", length=0, pad=8, labelrotation=0, colors="#3d3d3d")
+    ax.tick_params(axis="y", length=0, colors="#3d3d3d")
+
+    # Grid horizontal
+    ax.set_axisbelow(True)
+    ax.yaxis.grid(True, linestyle="-", linewidth=0.7, alpha=0.18)
+    ax.xaxis.grid(False)
 
     # Colocar la cantidad exacta arriba de cada barra
     for container in ax.containers:
-        ax.bar_label(container, fmt="%d", fontsize=8.5)
+        ax.bar_label(container, fmt="%d", fontsize=8.5, color="#3d3d3d")
 
-    # Ajustar el espaciado y la rotación de los nombres en el eje x
-    plt.xticks(rotation=0)
-    plt.tight_layout()
+    # Configurar el estilo de la leyenda
+    legend = ax.legend(loc="upper center", bbox_to_anchor=(0.45, -0.12), ncol=3, frameon=False)
+    for text in legend.get_texts():
+        text.set_color("#3d3d3d")
 
-    return ax.get_figure()
+    # Ajustar el espaciado
+    fig.tight_layout()
+
+    return fig
