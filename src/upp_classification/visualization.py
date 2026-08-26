@@ -3,7 +3,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-from upp_classification.config import CLASS_NAMES, CLASS_LABELS, UPP_CSV_FILE, PIID_CSV_FILE
+from upp_classification.config import CLASS_NAMES, LABEL_TO_NAME, UPP_CSV_FILE, PIID_CSV_FILE
 
 
 def plot_training_curves(history):
@@ -189,14 +189,13 @@ def plot_dataset_distribution(upp_csv_file=UPP_CSV_FILE, piid_csv_file=PIID_CSV_
     df_all = pd.concat([df_upp, df_piid], ignore_index=True)
 
     # Cambiar los nombres de las clases y de los splits
-    label_map = {key: value["name"] for key, value in CLASS_LABELS.items()}
     split_map = {"train": "Entrenamiento", "val": "Validación", "test": "Prueba"}
 
     class_order = ["Piel sana", "Estadio I", "Estadio II", "Estadio III", "Estadio IV", "No estadiable"]
     split_order = ["Entrenamiento", "Validación", "Prueba"]
 
     # Aplicar el mapeo a la información de los datasets combinados
-    label_plot = df_all["label"].map(label_map)
+    label_plot = df_all["label"].map(LABEL_TO_NAME)
     split_plot = df_all["split"].map(split_map)
 
     # Contar imágenes por clase y por split
@@ -233,7 +232,7 @@ def plot_dataset_distribution(upp_csv_file=UPP_CSV_FILE, piid_csv_file=PIID_CSV_
 
     # Grid horizontal
     ax.set_axisbelow(True)
-    ax.yaxis.grid(True, linestyle="-", linewidth=0.7, alpha=0.18)
+    ax.yaxis.grid(True, linestyle=":", alpha=0.5)
     ax.xaxis.grid(False)
 
     # Colocar la cantidad exacta arriba de cada barra

@@ -71,6 +71,9 @@ CLASS_LABELS  = {
 # Diccionario para mapear de etiquetas de texto a índices numéricos
 LABEL_MAP = {key: value["id"] for key, value in CLASS_LABELS.items()}
 
+# Diccionario para mapear de etiquetas de texto a nombres descriptivos
+LABEL_TO_NAME = {key: value["name"] for key, value in CLASS_LABELS.items()}
+
 # Lista con los nombres descriptivos de las clases
 CLASS_NAMES = [value["name"] for value in CLASS_LABELS.values()]
 
