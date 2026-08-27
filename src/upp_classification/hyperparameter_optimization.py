@@ -150,6 +150,7 @@ def objective(trial, model_name, base_model_fn, preprocess_fn, search_space, ima
         mlflow.set_tag("architecture", model_name)
         mlflow.set_tag("optuna_trial", trial.number)
         mlflow.set_tag("stage", "hyperparameter_optimization")
+        mlflow.set_tag("augmentation", str(use_augmentation))
 
         # Registrar los hiperparámetros en MLflow
         log_params_to_mlflow(params=params)

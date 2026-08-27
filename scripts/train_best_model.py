@@ -129,6 +129,7 @@ def main():
         # Registrar información adicional del run
         mlflow.set_tag("architecture", model_name)
         mlflow.set_tag("stage", "best_model_training")
+        mlflow.set_tag("augmentation", str(args.augmentation))
         
         # Registrar los hiperparámetros en MLflow
         log_params_to_mlflow(params=best_params)
