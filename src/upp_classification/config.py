@@ -46,6 +46,9 @@ REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 FIGURES_DIR = REPORTS_DIR / "figures"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
+DATASET_PLOTS_DIR = FIGURES_DIR / "dataset"
+DATASET_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+
 # Hiperparámetros
 EPOCHS = 100
 

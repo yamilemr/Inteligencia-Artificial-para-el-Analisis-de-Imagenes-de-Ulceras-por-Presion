@@ -166,7 +166,103 @@ def plot_class_metrics(class_metrics, title, class_names=CLASS_NAMES):
     return fig
 
 
-def plot_dataset_distribution(upp_csv_file=UPP_CSV_FILE, piid_csv_file=PIID_CSV_FILE):
+def style_bar_plot(ax, title, ylabel, title_x=0.5, labelrotation_x=0):
+    """
+    Aplica un estilo visual consistente a una gráfica de barras.
+
+    Args:
+    - ax (matplotlib.axes.Axes): Ejes de la gráfica que se desea configurar.
+    - title (str): Título de la gráfica.
+    - ylabel (str): Etiqueta del eje Y.
+    - title_x (float, optional): Coordenada X para centrar el título (0.0 a 1.0). Por defecto es 0.5.
+    - labelrotation_x (int, optional): Rotación de las etiquetas del eje X. Por defecto es 0.
+
+    Returns:
+    - None: Modifica directamente los ejes (ax) proporcionados.
+    """
+    # Título y etiquetas de los ejes
+    ax.set_xlabel("")
+    ax.set_ylabel(ylabel, labelpad=8, color="#3d3d3d")
+    ax.set_title(title, fontweight="bold", pad=15, x=title_x, color="#3d3d3d") 
+
+    # Configurar los bordes de la gráfica
+    ax.spines["top"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["bottom"].set_color("#9b9b9b")
+
+    # Configurar el estilo de los ejes
+    ax.tick_params(axis="x", length=0, pad=8, labelrotation=labelrotation_x, colors="#3d3d3d")
+    ax.tick_params(axis="y", length=0, colors="#3d3d3d")
+
+    # Grid horizontal
+    ax.set_axisbelow(True)
+    ax.yaxis.grid(True, linestyle=":", alpha=0.5)
+    ax.xaxis.grid(False)
+
+    # Colocar la cantidad exacta arriba de cada barra
+    for container in ax.containers:
+        ax.bar_label(container=container, fmt="%d", fontsize=8.5, color="#3d3d3d")
+
+
+def plot_class_counts_per_dataset(upp_csv_file=UPP_CSV_FILE, piid_csv_file=PIID_CSV_FILE):
+    """
+    Genera dos gráficos de barras con el número de imágenes por clase para la base de datos principal
+    y para el conjunto PIID reclasificado.
+
+    Args:
+    - upp_csv_file (str o Path, optional): Ruta del archivo CSV que contiene los metadatos de las 
+                                           imágenes del dataset principal. Por defecto es UPP_CSV_FILE.
+    - piid_csv_file (str o Path, optional): Ruta del archivo CSV que contiene los metadatos de las 
+                                            imágenes del dataset PIID. Por defecto es PIID_CSV_FILE.
+
+    Returns:
+    - tuple: Una tupla con las figuras de las distribuciones de cada base de datos:
+             - fig_upp (matplotlib.figure.Figure)
+             - fig_piid (matplotlib.figure.Figure)
+    """
+    df_upp = pd.read_csv(upp_csv_file)
+    df_piid = pd.read_csv(piid_csv_file)
+
+    # Orden de los nombres de las clases
+    class_order_upp = ["Piel sana", "Estadio I", "Estadio II", "Estadio III", "Estadio IV", "No estadiable"]
+    class_order_piid = class_order_upp[1:]
+
+    # Contar imágenes por clase
+    counts_upp = df_upp["label"].map(LABEL_TO_NAME).value_counts().reindex(index=class_order_upp)
+    counts_piid = df_piid["label"].map(LABEL_TO_NAME).value_counts().reindex(index=class_order_piid)
+
+    # Gráfica de la base de datos principal
+    fig_upp, ax_upp = plt.subplots(figsize=(5.7, 3.8))
+    ax_upp.bar(counts_upp.index, counts_upp.values, width=0.5, color="#889ab9")
+    style_bar_plot(
+        ax=ax_upp, 
+        title="Imágenes por clase de la base de datos principal\n", 
+        ylabel="Número de imágenes", 
+        title_x=0.44,
+        labelrotation_x=27)
+    ax_upp.text(0.44, 1.07, f"Total = {counts_upp.sum()} imágenes", 
+                transform=ax_upp.transAxes, ha="center", va="bottom", color="#3d3d3d")
+    fig_upp.tight_layout()
+
+    # Gráfica de PIID
+    fig_piid, ax_piid = plt.subplots(figsize=(4.7, 3.8))
+    ax_piid.bar(counts_piid.index, counts_piid.values, width=0.5, color="#889ab9")
+    style_bar_plot(
+        ax=ax_piid,
+        title="Imágenes por clase del conjunto PIID\n",
+        ylabel="Número de imágenes",
+        title_x=0.44,
+        labelrotation_x=27
+    )
+    ax_piid.text(0.44, 1.07, f"Total = {counts_piid.sum()} imágenes", 
+                 transform=ax_piid.transAxes, ha="center", va="bottom", color="#3d3d3d")
+    fig_piid.tight_layout()
+
+    return fig_upp, fig_piid
+
+
+def plot_class_split_distribution(upp_csv_file=UPP_CSV_FILE, piid_csv_file=PIID_CSV_FILE):
     """
     Genera un gráfico de barras con la distribución de imágenes por clase y split (train, val y test)
     de ambos conjuntos (UPP y PIID).
@@ -212,33 +308,22 @@ def plot_dataset_distribution(upp_csv_file=UPP_CSV_FILE, piid_csv_file=PIID_CSV_
     counts.columns = [f"{col} ({split_totals[col]} imgs)" for col in counts.columns]
 
     # Graficar
-    ax = counts.plot(kind="bar", figsize=(7.5, 4), width=0.7, color=["#b6cee4", "#95c8cf", "#d2ddbf"]) 
+    ax = counts.plot(kind="bar", figsize=(7.5, 4.2), width=0.7, color=["#b6cee4", "#95c8cf", "#d2ddbf"]) 
     fig = ax.get_figure()
+    
+    # Aplicar el estilo de la gráfica
+    style_bar_plot(
+        ax=ax, 
+        title="Distribución de imágenes por clase y partición\n", 
+        ylabel="Número de imágenes",
+        title_x=0.45,
+        labelrotation_x=0
+    )
 
-    # Título y etiquetas de los ejes
-    ax.set_xlabel("")
-    ax.set_ylabel("Número de imágenes", labelpad=8, color="#3d3d3d")
-    ax.set_title("Distribución de imágenes por clase y partición", fontweight="bold", pad=15, color="#3d3d3d") 
-
-    # Configurar los bordes de la gráfica
-    ax.spines["top"].set_visible(False)
-    ax.spines["left"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    ax.spines["bottom"].set_color("#9B9B9B")
-
-    # Configurar el estilo de los ejes
-    ax.tick_params(axis="x", length=0, pad=8, labelrotation=0, colors="#3d3d3d")
-    ax.tick_params(axis="y", length=0, colors="#3d3d3d")
-
-    # Grid horizontal
-    ax.set_axisbelow(True)
-    ax.yaxis.grid(True, linestyle=":", alpha=0.5)
-    ax.xaxis.grid(False)
-
-    # Colocar la cantidad exacta arriba de cada barra
-    for container in ax.containers:
-        ax.bar_label(container, fmt="%d", fontsize=8.5, color="#3d3d3d")
-
+    # Agregar el número total de imágenes
+    ax.text(0.45, 1.05, f"Total = {split_totals.sum()} imágenes", 
+            transform=ax.transAxes, ha="center", va="bottom", color="#3d3d3d")
+    
     # Configurar el estilo de la leyenda
     legend = ax.legend(loc="upper center", bbox_to_anchor=(0.45, -0.12), ncol=3, frameon=False)
     for text in legend.get_texts():
@@ -247,4 +332,95 @@ def plot_dataset_distribution(upp_csv_file=UPP_CSV_FILE, piid_csv_file=PIID_CSV_
     # Ajustar el espaciado
     fig.tight_layout()
 
+    return fig
+
+
+def plot_patient_split_assignment(upp_csv_file=UPP_CSV_FILE):
+    """
+    Genera una matriz que muestra la asignación de cada paciente a una única partición.
+
+    Args:
+    - upp_csv_file (str o Path, optional): Ruta del archivo CSV que contiene los metadatos de las 
+                                            imágenes del dataset principal. Por defecto es UPP_CSV_FILE.
+
+    Returns:
+    - matplotlib.figure.Figure: Figura con la asignación de pacientes por split.
+    """
+    df = pd.read_csv(upp_csv_file)
+
+    # Filtrar, eliminar duplicados y ordenar alfabéticamente (p001 a p259)
+    patients = df[["patient_id", "split"]].dropna().drop_duplicates().sort_values("patient_id")
+
+    # Diccionarios de mapeo para los colores y las etiquetas de cada split
+    split_colors = {"train": "#9abfde", "val": "#68c5d0", "test": "#c7d7ab"}
+    split_names = {"train": "Entrenamiento", "val": "Validación", "test": "Prueba"}
+    
+    # Crear la matriz paciente x split usando Pandas Pivot
+    patients["val"] = patients["split"].map({"train": 1, "val": 2, "test": 3})
+    pivot = (
+        patients.pivot(index="split", columns="patient_id", values="val")
+        .reindex(["train", "val", "test"])
+        .fillna(0)
+    )
+    patient_order = pivot.columns.tolist()
+
+    # Mapa de colores
+    cmap = LinearSegmentedColormap.from_list("split_colors", ["#e5e5e5", *split_colors.values()], N=4)
+
+    # Crear figura
+    fig, ax = plt.subplots(figsize=(12, 4.5))
+    ax.imshow(pivot.values, aspect="auto", cmap=cmap, vmin=0, vmax=3)
+
+    # Título
+    ax.set_title("Asignación de los pacientes a cada partición\n", 
+                 fontweight="bold", fontsize=14, pad=12, x=0.45, color="#3d3d3d")
+
+    # Agregar el número total de pacientes
+    ax.text(0.45, 1.05, f"Total = {len(patient_order)} pacientes", transform=ax.transAxes,
+            ha="center", va="bottom", fontsize=12, color="#3d3d3d")
+
+    # Líneas separadoras con grid
+    ax.set_xticks(np.arange(-0.5, len(patient_order)), minor=True)
+    ax.grid(which="minor", color="white", linewidth=0.4, axis="x")
+    
+    # Etiquetas del eje X
+    ticks = list(range(0, len(patient_order), 20))
+    if ticks[-1] != len(patient_order) - 1:
+        ticks.append(len(patient_order) - 1)
+        
+    ax.set_xticks(ticks)
+    ax.set_xticklabels([patient_order[i] for i in ticks], fontsize=10)
+    ax.tick_params(axis="x", which="both", length=0, pad=8, colors="#3d3d3d")
+    ax.set_xlabel("Pacientes", labelpad=8, fontsize=12, color="#3d3d3d")
+
+    # Etiquetas del eje Y
+    ax.set_yticks(range(3))
+    ax.set_yticklabels([split_names[s] for s in ["train", "val", "test"]], fontsize=12)
+    ax.tick_params(axis="y", which="both", length=0, colors="#3d3d3d")
+
+    # Eliminar bordes
+    for spine in ax.spines.values(): 
+        spine.set_visible(False)
+
+    # Leyenda
+    counts = patients["split"].value_counts()
+    legend_handles = [
+        plt.Line2D(
+            [0], [0], 
+            marker="s", 
+            color="w", 
+            markerfacecolor=split_colors[k], 
+            markersize=9, 
+            label=f"{split_names[k]} ({counts.get(k, 0)} pacientes)"
+        )
+        for k in ["train", "val", "test"]
+    ]
+    legend = ax.legend(handles=legend_handles, loc="upper center", fontsize=12,
+                       bbox_to_anchor=(0.45, -0.25), ncol=3, frameon=False)
+    for text in legend.get_texts():
+            text.set_color("#3d3d3d")
+
+    # Ajustar el espaciado
+    plt.tight_layout()
+    
     return fig

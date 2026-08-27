@@ -142,37 +142,3 @@ def generate_upp_metadata(imgs_dir=UPP_IMGS_DIR, csv_output_path=UPP_CSV_FILE):
     df_upp.to_csv(csv_output_path, index=False)
     
     return df_upp
-
-
-def verify_data_leakage(df):
-    """
-    Imprime un resumen de los conjuntos train, val y test para verificar que ningún
-    paciente está presente en más de una partición de forma simultánea.
-
-    Args:
-    - df (pd.DataFrame): DataFrame que contiene los metadatos de las imágenes.
-                         Debe tener las columnas 'patient_id' y 'split'.
-
-    Returns:
-    - None: La función imprime los resultados en consola.
-    """
-    pacientes_train = set(df[df["split"] == "train"]["patient_id"].unique())
-    pacientes_val = set(df[df["split"] == "val"]["patient_id"].unique())
-    pacientes_test = set(df[df["split"] == "test"]["patient_id"].unique())
-
-    print("\n--- Verificación de Data Leakage ---")
-
-    # Pacientes por conjunto
-    print(f"\nPacientes en train: {len(pacientes_train)}")
-    print(pacientes_train)
-
-    print(f"\nPacientes en val: {len(pacientes_val)}")
-    print(pacientes_val)
-
-    print(f"\nPacientes en test: {len(pacientes_test)}")
-    print(pacientes_test)
-
-    # Verificar que no hay pacientes compartidos
-    print(f"\nTrain ∩ Val: {len(pacientes_train & pacientes_val)}")
-    print(f"Train ∩ Test: {len(pacientes_train & pacientes_test)}")
-    print(f"Val ∩ Test: {len(pacientes_val & pacientes_test)}")
