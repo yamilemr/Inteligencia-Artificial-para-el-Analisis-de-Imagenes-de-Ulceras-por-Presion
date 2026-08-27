@@ -185,6 +185,9 @@ def objective(trial, model_name, base_model_fn, preprocess_fn, search_space, ima
                 pruning_callback=pruning_callback
             )
 
+            # Registrar en MLflow el número de épocas ejecutadas
+            mlflow.log_param("epochs", len(history.epoch))
+
             # Evaluar el modelo en los conjuntos de entrenamiento y validación
             # y registrar las métricas en MLflow
             evaluate_model_datasets(

@@ -51,10 +51,10 @@ def parse_args():
 
     Returns:
     - argparse.Namespace: Objeto que contiene los argumentos introducidos por el usuario:
-                            - model (str): Arquitectura de transfer learning.
-                            - experiment (str): Nombre del experimento de MLflow.
-                            - cache (bool): Habilita el uso de caché en disco para acelerar 
-                                            la carga de imágenes.
+                          - model (str): Arquitectura de transfer learning.
+                          - experiment (str): Nombre del experimento de MLflow.
+                          - cache (bool): Habilita el uso de caché en disco para acelerar 
+                                          la carga de imágenes.
     """
     parser = argparse.ArgumentParser()
     
@@ -153,7 +153,7 @@ def main():
         )
         
         # Entrenar el modelo
-        train_model(
+        history = train_model(
             model=model,
             train_ds=train_ds,
             val_ds=val_ds,
@@ -161,10 +161,13 @@ def main():
             use_mlflow=True,
             pruning_callback=None
         )
+
+        # Registrar en MLflow el número de épocas ejecutadas
+        mlflow.log_param("epochs", len(history.epoch))
         
         # Evaluar el modelo en los conjuntos de entrenamiento, validación y prueba
         # y registrar las métricas en MLflow
-        evaluate_model_datasets(
+        results = evaluate_model_datasets(
             model=model,
             train_ds=train_ds,
             val_ds=val_ds,
@@ -176,6 +179,18 @@ def main():
         
         # Registrar el modelo en MLflow y guardarlo de forma local
         log_and_save_model(model=model, architecture_name=model_name)
+
+    # Imprimir los resultados
+    print(f"\nArquitectura: {model_name}")
+
+    for ds_name, ds_results in results.items():
+        metrics = ds_results["metrics"]
+
+        print(f"\n----- {ds_name.upper()} -----")
+        print(f"  Accuracy = {metrics['accuracy']:.4f}")
+        print(f"  Precision = {metrics['precision']:.4f}")
+        print(f"  Recall = {metrics['recall']:.4f}")
+        print(f"  F1-score  = {metrics['f1']:.4f}")
 
 
 if __name__ == "__main__":
