@@ -49,6 +49,16 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 DATASET_PLOTS_DIR = FIGURES_DIR / "dataset"
 DATASET_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
+# Directorio donde se almacenan las métricas
+METRICS_DIR = REPORTS_DIR / "metrics"
+METRICS_DIR.mkdir(parents=True, exist_ok=True)
+
+HP_OPT_DIR = METRICS_DIR / "hyperparameter_optimization"
+HP_OPT_DIR.mkdir(parents=True, exist_ok=True)
+
+BEST_MODELS_DIR = METRICS_DIR / "best_models"
+BEST_MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
 # Hiperparámetros
 EPOCHS = 100
 
