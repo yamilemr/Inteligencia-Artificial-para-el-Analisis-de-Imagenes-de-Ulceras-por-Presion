@@ -49,6 +49,9 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 DATASET_PLOTS_DIR = FIGURES_DIR / "dataset"
 DATASET_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
+TRAINING_PLOTS_DIR = FIGURES_DIR / "training"
+TRAINING_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+
 # Directorio donde se almacenan las métricas
 METRICS_DIR = REPORTS_DIR / "metrics"
 METRICS_DIR.mkdir(parents=True, exist_ok=True)

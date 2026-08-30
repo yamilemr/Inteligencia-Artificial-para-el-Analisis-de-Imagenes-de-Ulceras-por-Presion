@@ -6,66 +6,77 @@ from matplotlib.colors import LinearSegmentedColormap
 from upp_classification.config import CLASS_NAMES, LABEL_TO_NAME, UPP_CSV_FILE, PIID_CSV_FILE
 
 
-def plot_training_curves(history):
+def plot_training_curves(history, title, tick_step=10):
     """
     Genera un gráfico con las curvas de entrenamiento y validación para accuracy y loss.
 
     Args:
-    - history (keras.callbacks.History): Objeto history devuelto por `model.fit()`.
+    - history (keras.callbacks.History o dict): Objeto history devuelto por `model.fit()`,
+                                                o un diccionario con las métricas.
+    - title (str): Título principal para la figura.
+    - tick_step (int, optional): Intervalo para las marcas del eje X. Por defecto es 10.
 
     Returns:
     - matplotlib.figure.Figure: Figura con las curvas de accuracy y loss.
     """
-    # Definir los colores de las curvas
-    color_train = "#6e5db0"
-    color_val = "#319491"
-
-    # Diccionario con el historial del entrenamiento
-    history = history.history
+    # Si es un objeto de Keras, extraer el diccionario
+    # Si ya es un diccionario, usarlo directamente
+    history_dict = history.history if hasattr(history, "history") else history
 
     # Obtener las métricas del historial
-    train_acc = history["accuracy"]
-    val_acc = history["val_accuracy"]
+    train_acc = history_dict["accuracy"]
+    val_acc = history_dict["val_accuracy"]
 
-    train_loss = history["loss"]
-    val_loss = history["val_loss"]
+    train_loss = history_dict["loss"]
+    val_loss = history_dict["val_loss"]
 
     # Definir el rango de épocas y las posiciones de las marcas del eje x
     epochs_range = range(1, len(train_acc) + 1)
-    ticks = [1] + list(range(10, len(train_acc) + 1, 10))
+    ticks = [1] + list(range(tick_step, len(train_acc) + 1, tick_step))
 
     # Agregar la última época si no coincide con una marca existente
     if ticks[-1] != len(train_acc):
         ticks.append(len(train_acc))
 
+    # Definir los colores de las curvas
+    color_train = "#6856ad"
+    color_val = "#279fb4"
+
     # Crear la figura con dos subplots
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 4))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+    fig.suptitle(title, fontsize=16, fontweight="bold", y=1.04, color="#3d3d3d")
 
     # Curvas de accuracy
-    ax1.plot(epochs_range, train_acc, label="Entrenamiento", color=color_train)
-    ax1.plot(epochs_range, val_acc, label="Validación", color=color_val)
-    ax1.set_ylabel("Accuracy", fontsize=17, color="#3d3d3d")
+    ax1.plot(epochs_range, train_acc, label="Entrenamiento", linewidth=2, solid_capstyle="round", color=color_train)
+    ax1.plot(epochs_range, val_acc, label="Validación", linewidth=2, solid_capstyle="round", color=color_val)
+    ax1.set_ylabel("Accuracy", fontsize=14, color="#3d3d3d")
 
     # Curvas de loss
-    ax2.plot(epochs_range, train_loss, label="Entrenamiento", color=color_train)
-    ax2.plot(epochs_range, val_loss, label="Validación", color=color_val)
-    ax2.set_ylabel("Loss", fontsize=17, color="#3d3d3d")
+    ax2.plot(epochs_range, train_loss, label="Entrenamiento", linewidth=2, solid_capstyle="round", color=color_train)
+    ax2.plot(epochs_range, val_loss, label="Validación", linewidth=2, solid_capstyle="round", color=color_val)
+    ax2.set_ylabel("Loss", fontsize=14, color="#3d3d3d")
 
     # Aplicar el mismo formato a ambos subplots
     for ax in (ax1, ax2):
-        ax.set_xlabel("Epochs", fontsize=17, color="#3d3d3d")
+        ax.set_xlabel("Épocas", fontsize=12, color="#3d3d3d")
         ax.set_xticks(ticks)
-        ax.tick_params(axis="both", labelsize=11, colors="#3d3d3d")
-        ax.legend(fontsize=13, labelcolor="#3d3d3d")
-        ax.grid(True, linestyle=":", alpha=0.5)
+        ax.tick_params(axis="both", length=0, pad=7, colors="#3d3d3d")
+        ax.grid(axis="y", linestyle="-", linewidth=0.7, alpha=0.27)
+        ax.grid(axis="x", linestyle="-", linewidth=0.5, alpha=0.17)
         ax.spines["right"].set_visible(False)
         ax.spines["top"].set_visible(False)
-        ax.spines["left"].set_color("#3d3d3d")
-        ax.spines["bottom"].set_color("#3d3d3d")
+        ax.spines["left"].set_color("#9b9b9b")
+        ax.spines["bottom"].set_color("#9b9b9b")
+
+    # Leyenda única para ambas gráficas
+    handles, labels = ax1.get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 0.99), 
+               ncol=2, frameon=False, fontsize=12, labelcolor="#3d3d3d")
 
     # Ajustar el espaciado
-    plt.tight_layout()
-    plt.subplots_adjust(wspace=0.2) 
+    fig.tight_layout()
+    fig.subplots_adjust(wspace=0.17)
 
     return fig
 

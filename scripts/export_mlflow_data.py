@@ -97,8 +97,9 @@ def extract_metric_history_per_epoch(tracking_uri=MLFLOW_TRACKING_URI):
             run_id = run.info.run_id
             run_name = run.info.run_name
 
-            # Recuperar el tag "stage"
+            # Recuperar los tags "stage" y "architecture"
             stage = run.data.tags.get("stage")
+            architecture = run.data.tags.get("architecture")
 
             # Iterar sobre las métricas registradas en el run
             for metric_key in run.data.metrics.keys():
@@ -112,10 +113,11 @@ def extract_metric_history_per_epoch(tracking_uri=MLFLOW_TRACKING_URI):
                             "experiment_id": exp.experiment_id,
                             "run_id": run_id,
                             "run_name": run_name,
+                            "architecture": architecture,
+                            "stage": stage,
                             "step": m.step,
                             "metric_name": metric_key,
-                            "value": m.value,
-                            "stage": stage
+                            "value": m.value
                         })
 
     return pd.DataFrame(history_data)
