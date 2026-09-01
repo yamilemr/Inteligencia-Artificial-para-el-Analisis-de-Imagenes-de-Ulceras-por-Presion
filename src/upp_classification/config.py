@@ -49,6 +49,9 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 DATASET_PLOTS_DIR = FIGURES_DIR / "dataset"
 DATASET_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
+HP_OPT_PLOTS_DIR = FIGURES_DIR / "hyperparameter_optimization"
+HP_OPT_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+
 TRAINING_PLOTS_DIR = FIGURES_DIR / "training"
 TRAINING_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
