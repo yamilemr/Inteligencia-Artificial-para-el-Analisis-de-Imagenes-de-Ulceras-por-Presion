@@ -102,8 +102,8 @@ def plot_confusion_matrix(cm, metrics, title, class_names=CLASS_NAMES):
     f1 = metrics["f1"]
 
     # Definir un mapa de colores personalizado
-    colors = ["#e7eeff", "#8882d9", "#264f73"]
-    custom_cmap = LinearSegmentedColormap.from_list("custom_bupu", colors)
+    colors = ["#eef5fb", "#94b4d1", "#5f86ac", "#315e88"]
+    custom_cmap = LinearSegmentedColormap.from_list("custom_cmap", colors)
 
     # Inicializar la figura
     fig, ax = plt.subplots(figsize=(6, 6))
@@ -114,16 +114,33 @@ def plot_confusion_matrix(cm, metrics, title, class_names=CLASS_NAMES):
                 annot_kws={"size": 13}, ax=ax)
 
     # Configurar el título y las etiquetas de los ejes
-    ax.set_title(title, fontsize=14)
-    ax.set_xlabel("Clase predicha", fontsize=12)
-    ax.set_ylabel("Clase real", fontsize=12)
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+    ax.set_title(title, fontsize=17, pad=12, color="#3d3d3d")
+    ax.set_xlabel("Clase predicha", fontsize=14, color="#3d3d3d")
+    ax.set_ylabel("Clase real", fontsize=14, color="#3d3d3d")
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, color="#3d3d3d")
+    ax.set_yticklabels(ax.get_yticklabels(), color="#3d3d3d")
+    ax.tick_params(axis="both", color="#3d3d3d")
 
-    ax.text(0.45, -0.4, f"Accuracy: {accuracy:.4f} | Precision: {precision:.4f}\nRecall: {recall:.4f} | F1-score: {f1:.4f}",
-            ha="center", va="top", transform=ax.transAxes, fontsize=11)
+    ax.text(0.42, -0.37, f"Accuracy: {accuracy:.4f} | Precision: {precision:.4f}\nRecall: {recall:.4f} | F1-score: {f1:.4f}",
+            ha="center", va="top", transform=ax.transAxes, fontsize=11, color="#3d3d3d")
 
+    # Extraer el objeto del mapa de calor
+    mesh = ax.collections[0]
+    norm = mesh.norm
+    cmap = mesh.cmap
+
+    # Ajustar el color del texto de las anotaciones según la luminancia de la celda
+    for text, val in zip(ax.texts, cm.flatten()):
+        r, g, b, _ = cmap(norm(val))
+        luminance = 0.299 * r + 0.587 * g + 0.114 * b
+        text.set_color("white" if luminance < 0.68 else "#3d3d3d")
+
+    # Estilo de la colorbar
+    mesh.colorbar.ax.tick_params(colors="#3d3d3d")
+    
     # Ajustar el espaciado
-    plt.tight_layout()
+    fig.tight_layout()
+    fig.subplots_adjust(bottom=0.32)
     
     return fig
 
@@ -166,13 +183,13 @@ def plot_class_metrics(class_metrics, title, class_names=CLASS_NAMES):
                 linecolor="#3d3d3d", cbar=False, annot_kws={"size": 12, "color": "#3d3d3d"}, ax=ax)
 
     # Configurar el título y las etiquetas de los ejes
-    ax.set_title(title, fontsize=14, color="#3d3d3d")
-    ax.set_xticklabels(ax.get_xticklabels(), color="#3d3d3d")
+    ax.set_title(title, pad=12, fontsize=14, color="#3d3d3d")
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, color="#3d3d3d")
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0, color="#3d3d3d")
     ax.tick_params(labelsize=10, color="#3d3d3d")
 
     # Ajustar el espaciado y mostrar la figura
-    plt.tight_layout()
+    fig.tight_layout()
     
     return fig
 
